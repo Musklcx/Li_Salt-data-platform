@@ -7,8 +7,27 @@ import socket
 from flask import request
 from PIL import Image
 from werkzeug.utils import secure_filename
+from auth import auth_bp, init_auth_db
 
 app = Flask(__name__)
+
+# ---- 登录认证配置（auth 蓝图使用，移植自 login 项目）----
+app.config['SECRET_KEY'] = os.environ.get(
+    'JWT_SECRET',
+    'dev-insecure-secret-please-change-me-to-a-long-random-string-32bytes+'
+)
+app.config['JWT_ALGORITHM'] = 'HS256'
+app.config['JWT_EXPIRE_HOURS'] = 2
+# 邮箱验证码（未配置 SMTP_HOST 时验证码打印到服务控制台，便于本地联调）
+app.config['SMTP_HOST'] = os.environ.get('SMTP_HOST', '')
+app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '465'))
+app.config['SMTP_USER'] = os.environ.get('SMTP_USER', '')
+app.config['SMTP_PASS'] = os.environ.get('SMTP_PASS', '')
+app.config['MAIL_FROM'] = os.environ.get('MAIL_FROM', '') or app.config['SMTP_USER']
+app.config['VERIFY_CODE_TTL'] = 10 * 60
+app.config['VERIFY_CODE_RESEND'] = 60
+
+app.register_blueprint(auth_bp)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "data", "db_day.db")
@@ -23,7 +42,7 @@ TARGET_H = 800
 # ========== 多页面路由 ==========
 @app.route('/')
 def home():
-    return redirect('/data')
+    return redirect('/login')
 
 @app.route('/data')
 def page_data():
@@ -410,6 +429,8 @@ def risk_delete_img():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        init_auth_db()  # 首次运行自动建用户表（已存在则跳过）
     hostname = socket.gethostname()
     print(f"局域网主机名访问地址：http://{hostname}:5000")
     print(f"数据库路径：{DB_FILE}")
