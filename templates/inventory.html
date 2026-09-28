@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>锂盐车间共享平台 - 期末金属量</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/element-plus.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inventory.css') }}">
+  <style>
+    /* 与其它页面一致的全局风格 */
+    body {
+      background: #f4f7fa;
+      padding: 16px;
+      font-family: "Microsoft Yahei", "PingFang SC", sans-serif;
+    }
+    /* 顶部导航：与全站一致 */
+    .top-nav { display: flex; gap: 2px; margin-bottom: 12px; }
+    .nav-tab {
+      padding: 12px 28px; background: #eee; color: #333; text-decoration: none;
+      font-size: 16px; display: inline-block; cursor: pointer;
+    }
+    .nav-tab.active { background: #e74c3c; color: #fff; }
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-menu {
+      display: none; position: absolute; top: 100%; left: 0;
+      background: #888; min-width: 220px; z-index: 999;
+    }
+    .nav-dropdown:hover .nav-dropdown-menu { display: block; }
+    .nav-dropdown-menu a {
+      display: block; padding: 12px 20px; color: #fff; text-decoration: none;
+    }
+    .nav-dropdown-menu a:hover { background: #666; }
+
+    /* 卡片对齐 notice 风格：圆角阴影 */
+    .kpi, .card, .topbar {
+      border-radius: 12px;
+      box-shadow: 0 2px 10px #00000012;
+      border: none;
+    }
+    /* Element Plus 主色改为红色系，与导航一致 */
+    :root {
+      --el-color-primary: #e74c3c;
+      --el-color-primary-light-3: #f18a80;
+      --el-color-primary-light-5: #f5aba4;
+      --el-color-primary-light-7: #f9cdc9;
+      --el-color-primary-light-8: #fbdedb;
+      --el-color-primary-light-9: #fdeeee;
+      --el-color-primary-dark-2: #d63a2b;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航（信息公示 下拉：通知公示 / 金属盘点） -->
+  <div class="top-nav">
+    <a href="/data" class="nav-tab">数据对比</a>
+    <div class="nav-tab nav-dropdown">
+      现场问题 <span style="font-size:12px;">▼</span>
+      <div class="nav-dropdown-menu">
+        <a href="/hazard">30吨蒸发问题汇总</a>
+        <a href="/saferisks">安全隐患整改</a>
+        <a href="#" onclick="alert('未开发')">车间生产计划</a>
+      </div>
+    </div>
+    <div class="nav-tab nav-dropdown active">
+      信息公示 <span style="font-size:12px;">▼</span>
+      <div class="nav-dropdown-menu">
+        <a href="/notice">班组工作量</a>
+        <a href="/inventory">期末金属量</a>
+      </div>
+    </div>
+    <a href="/staff" class="nav-tab">人员概况</a>
+    <a href="/download" class="nav-tab">下载专区</a>
+  </div>
+
+{% raw %}
+<div id="app">
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <h1>锂金属平衡 · 期末盘点</h1>
+    <div class="actions">
+      <el-select v-model="month" size="small" style="width:110px" @change="load">
+        <el-option v-for="m in months" :key="m" :label="m" :value="m"></el-option>
+      </el-select>
+      <el-button size="small" @click="showNewPeriod = true" v-if="unlocked">＋ 新增月</el-button>
+      <el-button size="small" @click="triggerImport" v-if="unlocked">导入盘点表</el-button>
+      <el-button size="small" type="primary" plain @click="addRow" v-if="unlocked">+ 增加行</el-button>
+      <el-button size="small" :type="unlocked ? 'danger' : 'success'" plain @click="toggleLock">
+        {{ unlocked ? '🔒 锁定' : '🔓 解锁编辑' }}
+      </el-button>
+      <input type="file" ref="fileInput" accept=".xlsx,.xls" style="display:none" @change="onImport">
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpis kpi-row2">
+    <div class="kpi split">
+      <div class="split-cell">
+        <div class="label">本月投入</div>
+        <div class="value">{{ fmt(input) }}<small>t</small></div>
+      </div>
+      <div class="split-divider"></div>
+      <div class="split-cell">
+        <div class="label">损失金属量</div>
+        <div class="value">{{ fmt(summary.loss) }}<small>t</small></div>
+      </div>
+    </div>
+    <div class="kpi split">
+      <div class="split-cell">
+        <div class="label">期初金属量</div>
+        <div class="value">{{ fmt(summary.opening) }}<small>t</small></div>
+      </div>
+      <div class="split-divider"></div>
+      <div class="split-cell">
+        <div class="label">期末金属量</div>
+        <div class="value warn">{{ fmt(ending) }}<small>t</small></div>
+      </div>
+    </div>
+    <div class="kpi split">
+      <div class="split-cell">
+        <div class="label">碳酸锂</div>
+        <div class="value">{{ fmt(summary.sold_li2co3) }}<small>t</small></div>
+      </div>
+      <div class="split-divider"></div>
+      <div class="split-cell">
+        <div class="label">硫酸钠</div>
+        <div class="value">{{ fmt(summary.sold_na2so4) }}<small>t</small></div>
+      </div>
+      <div class="split-divider"></div>
+      <div class="split-cell">
+        <div class="label">硫酸锂</div>
+        <div class="value">{{ fmt(sale) }}<small>t</small></div>
+      </div>
+    </div>
+    <div class="kpi hl"><div class="label">金属直收率</div><div class="value">{{ pct(yield_) }}</div></div>
+  </div>
+
+  <!-- 图表区 -->
+  <div class="grid2">
+    <div class="card"><h3>金属平衡流向（桑基图）</h3><div class="sub">投入 → 外售 / 在制储罐 / 损失</div><div id="ch-sankey" class="chart"></div></div>
+    <div class="card"><h3>期末金属量构成（红区）</h3><div class="sub">在制储罐 vs 在线产品 vs 渣</div><div id="ch-donut" class="chart"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>直收率推导（瀑布图）</h3><div class="sub">期初 → +投入 → −期末 → −损失 → =外售</div><div id="ch-waterfall" class="chart"></div></div>
+    <div class="card"><h3>储罐金属量 Top 8</h3><div class="sub">按工序着色，定位金属压在哪些罐</div><div id="ch-top" class="chart"></div></div>
+  </div>
+
+  <!-- 明细表格 -->
+  <div class="card">
+    <h3>盘点明细表</h3>
+    <div class="sub">改高度自动算体积，改体积/含量自动算金属量 · 勾选"计入期末"控制是否累加</div>
+    <div class="src-bar">
+      <span class="src-item">气浮白：<b>{{ fmt(db.bai_vol) }}</b> m³ → <b>{{ fmt(db.bai_metal) }}</b> t</span>
+      <span class="src-item">气浮夜：<b>{{ fmt(db.ye_vol) }}</b> m³ → <b>{{ fmt(db.ye_metal) }}</b> t</span>
+      <span class="src-item">外卖硫酸锂：<b>{{ fmt(db.sale_t) }}</b> t × 含量 → <b>{{ fmt(db.sale_pct_metal) }}</b> t</span>
+      <span class="src-days">{{ db.days }} 天合计</span>
+    </div>
+    <div id="ch-source" class="chart-mini"></div>
+    <el-table :data="rows" border stripe size="small" max-height="560" class="detail-table">
+      <el-table-column label="设备编号" width="100">
+        <template #default="{ row }">
+          <span>{{ row.equip_no }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="设备名称" min-width="160">
+        <template #default="{ row }">
+          <span>{{ row.equip_name }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="数据类型" width="110">
+        <template #default="{ row }">
+          <el-tag size="small" effect="plain" :style="{ backgroundColor: TYPE_COLOR[row.data_type] || '#f0f0f0', color: TYPE_TEXT[row.data_type] || '#666', borderColor: TYPE_COLOR[row.data_type] || '#ddd' }">
+            {{ row.data_type }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="半径m" width="110">
+        <template #default="{ row }">
+          <el-input-number v-model="row.radius" :precision="3" :step="0.1" size="small" controls-position="right" :disabled="!unlocked" @change="onRadiusChange(row)"></el-input-number>
+        </template>
+      </el-table-column>
+      <el-table-column label="盘点高度m" width="120">
+        <template #default="{ row }">
+          <el-input-number v-model="row.height" :precision="3" :step="0.1" size="small" controls-position="right" :disabled="!unlocked" @change="onHeightChange(row)"></el-input-number>
+        </template>
+      </el-table-column>
+      <el-table-column label="盘点体积m³" width="120">
+        <template #default="{ row }">
+          <el-input-number v-model="row.volume" :precision="3" :step="0.1" size="small" controls-position="right" :disabled="!unlocked" @change="onVolumeChange(row)"></el-input-number>
+        </template>
+      </el-table-column>
+      <el-table-column label="化验含量g/L" width="130">
+        <template #default="{ row }">
+          <el-input-number v-model="row.concentration" :precision="3" :step="0.1" size="small" controls-position="right" :disabled="!unlocked" @change="onConcentrationChange(row)"></el-input-number>
+        </template>
+      </el-table-column>
+      <el-table-column label="金属量t" width="110">
+        <template #default="{ row }">
+          <el-input-number v-model="row.metal" :precision="3" :step="0.01" size="small" controls-position="right" :disabled="!unlocked" @change="saveRow(row)"></el-input-number>
+        </template>
+      </el-table-column>
+      <el-table-column label="计入期末" width="80" align="center">
+        <template #default="{ row }">
+          <el-checkbox v-model="row.in_ending" :true-value="1" :false-value="0" :disabled="!unlocked" @change="saveRow(row)"></el-checkbox>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="80" align="center" v-if="unlocked">
+        <template #default="{ row }">
+          <el-button size="small" type="danger" plain @click="delRow(row)">删</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div id="balance" class="balance" v-html="balanceHtml"></div>
+  </div>
+
+  <el-dialog v-model="showNewPeriod" title="新增盘点月" width="420px">
+    <el-form label-width="90px" size="small">
+      <el-form-item label="月份">
+        <el-input v-model="newPeriod.month" placeholder="如 2026-09"></el-input>
+      </el-form-item>
+      <el-form-item label="开始日期">
+        <el-input v-model="newPeriod.start_date" placeholder="如 2026/8/31"></el-input>
+      </el-form-item>
+      <el-form-item label="结束日期">
+        <el-input v-model="newPeriod.end_date" placeholder="如 2026/9/29"></el-input>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button size="small" @click="showNewPeriod = false">取消</el-button>
+      <el-button size="small" type="primary" @click="addPeriod">创建</el-button>
+    </template>
+  </el-dialog>
+</div>
+{% endraw %}
+
+<script src="{{ url_for('static', filename='vendor/vue.global.prod.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/element-plus.min.js') }}"></script>
+<script src="{{ url_for('static', filename='lib/echarts/echarts.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js02/inventoryScr.js') }}"></script>
+</body>
+</html>

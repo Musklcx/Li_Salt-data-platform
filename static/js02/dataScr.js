@@ -375,13 +375,19 @@ function render() {
     renderTableHeader(layout);
     renderTableBody(data,layout);
 
-    // 渲染多系列图表
+    // 渲染多系列图表（风格对齐 inventory 盘点页：平滑曲线 + 浅面积 + 指定配色）
+    const CHART_COLORS = ["#5b8ff9", "#2f8f6e", "#e0a030", "#d9534f"];
     const xAxisData = data.map(d => d["日期"]);
-    const seriesList = seriesConfig[currentKey].map(cfg=>{
+    const seriesList = seriesConfig[currentKey].map((cfg, idx)=>{
         const ser = {
             name: cfg.name,
             type: chartType,
-            data: data.map(d=>Number(d[cfg.field]||0))
+            data: data.map(d=>Number(d[cfg.field]||0)),
+            itemStyle: { color: CHART_COLORS[idx % CHART_COLORS.length] }
+        }
+        if (chartType === "line") {
+            ser.smooth = true;
+            ser.areaStyle = { opacity: 0.15 };
         }
         // 如果是比例曲线，使用右侧Y轴
         if(cfg.isRatio){
@@ -392,17 +398,17 @@ function render() {
 
     const option = {
         tooltip: { trigger: "axis" },
-        legend:{ show:true },
-        xAxis: { type: "category", data: xAxisData, boundaryGap: false },
+        legend: { show: true, top: 0 },
+        xAxis: { type: "category", data: xAxisData, boundaryGap: false, axisLabel: { fontSize: 11 } },
         yAxis: [
-            { type: "value", name:"产量/消耗" },
-            { type: "value", name:"比值", position:"right" } // 右侧次坐标轴给比例曲线
+            { type: "value", name:"产量/消耗", splitLine: { lineStyle: { color: "#eef1f5" } } },
+            { type: "value", name:"比值", position:"right", splitLine: { show: false } }
         ],
         dataZoom: [
             { type: "slider", show: true, height: 20, bottom: 10, start: 0, end: 100 }
         ],
         series: seriesList,
-        grid: { bottom: 60 }
+        grid: { left: 10, right: 20, top: 30, bottom: 60, containLabel: true }
     }
     myChart.setOption(option, true);
 }

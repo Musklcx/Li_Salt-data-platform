@@ -8,6 +8,7 @@ from flask import request
 from PIL import Image
 from werkzeug.utils import secure_filename
 from auth import auth_bp, init_auth_db
+from inventory_bp import inventory_bp, init_inventory_db
 
 app = Flask(__name__)
 
@@ -28,6 +29,7 @@ app.config['VERIFY_CODE_TTL'] = 10 * 60
 app.config['VERIFY_CODE_RESEND'] = 60
 
 app.register_blueprint(auth_bp)
+app.register_blueprint(inventory_bp)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "data", "db_day.db")
@@ -308,6 +310,17 @@ def hazard_update():
     return jsonify({"code": 0, "msg": "保存成功"})
 
 
+# 解锁编辑密码：与期末盘点（inventory_bp.EDIT_PASSWORD）统一为 admin888
+HAZARD_EDIT_PASSWORD = 'admin888'
+
+@app.route("/api/hazard/unlock", methods=["POST"])
+def hazard_unlock():
+    data = request.get_json(force=True) or {}
+    if data.get("password") == HAZARD_EDIT_PASSWORD:
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "密码错误"}), 403
+
+
 # ========== 安全隐患整改台账接口 ==========
 @app.route('/api/risk/list')
 def risk_list():
@@ -431,6 +444,7 @@ def risk_delete_img():
 if __name__ == '__main__':
     with app.app_context():
         init_auth_db()  # 首次运行自动建用户表（已存在则跳过）
+        init_inventory_db()  # 期末盘点库建表/补列/首次导入（已存在则跳过）
     hostname = socket.gethostname()
     print(f"局域网主机名访问地址：http://{hostname}:5000")
     print(f"数据库路径：{DB_FILE}")

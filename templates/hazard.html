@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -133,7 +133,13 @@
                 <a href="#" onclick="alert('未开发')">车间生产计划</a>
             </div>
         </div>
-        <a href="/notice" class="nav-tab">信息公示</a>
+        <div class="nav-tab nav-dropdown">
+            信息公示 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/notice">班组工作量</a>
+                <a href="/inventory">期末金属量</a>
+            </div>
+        </div>
         <a href="/staff" class="nav-tab">人员概况</a>
         <a href="/download" class="nav-tab">下载专区</a>
     </div>
@@ -144,6 +150,9 @@
             30吨蒸发问题总数：{{ showTableData.length }}
             <span style="margin-left:40px;color:#e74c3c;">未完成：{{ noFinishCount }}</span>
             <span style="margin-left:40px;color:#229451;">已完成：{{ doneCount }}</span>
+            <span style="float:right;">
+                <el-button size="small" :type="unlocked ? 'danger' : 'success'" plain @click="toggleLock">{{ unlocked ? '🔒 锁定' : '🔓 解锁编辑' }}</el-button>
+            </span>
         </div>
 
         <el-table
@@ -189,17 +198,17 @@
                     </div>
                     <div class="form-row-big">
                         <div class="form-label">处理措施：</div>
-                        <el-input v-model="editForm.measures" placeholder="请输入处理措施"></el-input>
+                        <el-input v-model="editForm.measures" placeholder="请输入处理措施" :disabled="!unlocked"></el-input>
                     </div>
                     <div class="form-row">
                         <div class="form-label">是否完成：</div>
-                        <el-radio-group v-model="editForm.done">
+                        <el-radio-group v-model="editForm.done" :disabled="!unlocked">
                             <el-radio label="是">是</el-radio>
                             <el-radio label="否">否</el-radio>
                         </el-radio-group>
                     </div>
                     <div style="text-align:right;margin-top:30px;">
-                        <el-button type="primary" size="large" @click="saveEdit">确认</el-button>
+                        <el-button type="primary" size="large" @click="saveEdit" :disabled="!unlocked">确认</el-button>
                     </div>
                 </div>
             </div>
@@ -224,8 +233,7 @@
           },
           tableData: [],
           showTableData: [],
-          isAuthed: false,
-          authPassword: "ly1234"
+          unlocked: false
         }
       },
       computed: {
@@ -271,17 +279,36 @@
           this.editForm.done = row.done
           this.showDetails = true
         },
+        async toggleLock(){
+          if(this.unlocked){
+            this.unlocked = false;
+            this.$message.info('已锁定，数据只读');
+            return;
+          }
+          try{
+            const { value } = await this.$prompt('请输入编辑密码', '解锁编辑', {
+              confirmButtonText: '确定', cancelButtonText: '取消', inputType: 'password'
+            });
+            const resp = await fetch("/api/hazard/unlock", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({password: value})
+            });
+            const ret = await resp.json();
+            if(ret.ok){
+              this.unlocked = true;
+              this.$message.success('已解锁，可以编辑数据');
+            }else{
+              this.$message.error('密码错误');
+            }
+          }catch(err){
+            // 用户取消输入
+          }
+        },
         async saveEdit(){
-          if(!this.isAuthed){
-            const inputPwd = prompt("请输入操作密码：");
-            if(inputPwd === null){
-              return;
-            }
-            if(inputPwd !== this.authPassword){
-              alert("密码错误，无法保存");
-              return;
-            }
-            this.isAuthed = true;
+          if(!this.unlocked){
+            this.$message.warning('请先点击右上角「解锁编辑」再保存');
+            return;
           }
           try{
             const resp = await fetch("/api/hazard/update", {
