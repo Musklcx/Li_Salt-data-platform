@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 数据对比</title>
+
+    <!-- ECharts -->
+    <script src="{{ url_for('static', filename='lib/echarts/echarts.min.js') }}"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homeStyle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dataCompar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/icofont/icofont.min.css') }}">
+
+    <style>
+        /* 顶部导航样式，和参考图一致 */
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+<div style="padding:16px;">
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab active">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+                <a href="#" onclick="alert('未开发')">车间生产计划</a>
+            </div>
+        </div>
+        <a href="/notice" class="nav-tab">信息公示</a>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+    </div>
+
+    <!-- 生产数据页面内容 -->
+    <div class="stat-bar">
+        <div class="stat-item">当前选择：<span id="curMetricName">碳酸锂</span></div>
+        <div class="stat-item" id="statLithiumOutput">车间产出合计：<span id="lithiumOutputSum">0.00</span></div>
+        <div class="stat-item" id="statLithiumOut">仓库出库合计：<span id="lithiumOutSum">0.00</span></div>
+        <div class="stat-item" id="statSulfateDry" style="display:none;">干：<span id="sulfateDrySum">0.00</span></div>
+        <div class="stat-item" id="statSulfateWet" style="display:none;">湿：<span id="sulfateWetSum">0.00</span></div>
+        <div class="stat-item" id="statSulfateImpurity" style="display:none;">杂：<span id="sulfateImpuritySum">0.00</span></div>
+        <div class="stat-item" id="statSulfateLanded" style="display:none;">落地：<span id="sulfateLandedSum">0.00</span></div>
+        <div class="stat-item" id="statLithiumDiff">差值(出库‑产出)：<span id="lithiumDiffVal">0.00</span></div>
+        <div class="stat-item" id="statAvgRatio" style="display:none;">碳酸钠消耗平均值：<span id="avgRatioVal">0.00</span></div>
+        <div class="stat-item" id="statNormalSum">总值：<span id="sumVal">0.00</span></div>
+    </div>
+    <div class="top-row">
+        <div class="metric-group">
+            <button data-key="lithium" class="active">碳酸锂</button>
+            <button data-key="sodiumSulfate">硫酸钠</button>
+            <button data-key="sodiumCarbonate">碳酸钠</button>
+            <button data-key="drain">外排水</button>
+        </div>
+        <div class="right-group">
+            <button id="btnDay" class="active">日</button>
+            <button id="btnMonth">月</button>
+            <button id="btnLine" class="active">折线图</button>
+            <button id="btnBar">柱状图</button>
+            <input type="date" id="startDate">
+            <input type="date" id="endDate">
+            <button id="btnSearch">搜索</button>
+        </div>
+    </div>
+    <div id="chart" style="width:100%;height:450px;"></div>
+    <div class="table-wrap" style="max-height:calc(100vh - 660px);overflow-y:auto;">
+        <table class="table table-striped" style="margin:0;font-size:14px;">
+            <thead id="tableHead" style="position:sticky;top:0;background:#fff;z-index:1;">
+                <tr style="height:36px;">
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <style>
+        .table-wrap td {
+            padding: 6px 12px;
+        }
+    </style>
+</div>
+
+<script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js02/dataScr.js') }}"></script>
+</body>
+</html>

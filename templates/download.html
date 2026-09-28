@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 下载专区</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homeStyle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        /* 下载专区两栏布局 */
+        .download-wrap {
+            display: flex;
+            gap: 24px;
+        }
+        .download-column {
+            flex: 1;
+        }
+        .download-block {
+            background: #fff;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .download-block-title {
+            border-left: 4px solid #e74c3c;
+            padding-left: 10px;
+            margin-bottom: 16px;
+        }
+        .download-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .download-item a {
+            color: #333;
+            text-decoration: none;
+        }
+        .download-item a:hover {
+            color: #e74c3c;
+        }
+        .download-pagination {
+            margin-top: 12px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+                <a href="#" onclick="alert('未开发')">车间生产计划</a>
+            </div>
+        </div>
+        <a href="/notice" class="nav-tab">信息公示</a>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab active">下载专区</a>
+    </div>
+
+    <div class="download-wrap">
+        <div class="download-column">
+            <div class="download-block">
+                <h4 class="download-block-title">生产报表</h4>
+                <div class="download-list" id="reportList"></div>
+                <div class="download-pagination" id="reportPage"></div>
+            </div>
+            <div class="download-block">
+                <h4 class="download-block-title">绩效考核</h4>
+                <div class="download-list" id="kpiList"></div>
+                <div class="download-pagination" id="kpiPage"></div>
+            </div>
+        </div>
+        <div class="download-column">
+            <div class="download-block">
+                <h4 class="download-block-title">岗位职工</h4>
+                <div class="download-list" id="staffList"></div>
+                <div class="download-pagination" id="staffPage"></div>
+            </div>
+            <div class="download-block">
+                <h4 class="download-block-title">安全环保</h4>
+                <div class="download-list" id="safeList"></div>
+                <div class="download-pagination" id="safePage"></div>
+            </div>
+        </div>
+    </div>
+
+<script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js02/downloadScr.js') }}"></script>
+</body>
+</html>
+

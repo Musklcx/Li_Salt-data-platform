@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 安全隐患整改台账</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/element-ui.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        .page-title{
+            padding:12px 16px;
+            background:#fff;
+            color:#000;
+            border-radius:6px;
+            margin-bottom:12px;
+            border:1px solid #eee;
+            font-size:20px;
+            font-weight:bold;
+        }
+        .table-img{
+            width:72px;
+            height:72px;
+            object-fit:cover;
+            border-radius:4px;
+            cursor:pointer;
+        }
+        .no-img{
+            width:72px;
+            height:72px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#f5f7fa;
+            border-radius:4px;
+            color:#999;
+            font-size:12px;
+        }
+        .op-btn{
+            width:70px;
+            height:28px;
+            padding:0;
+            font-size:12px;
+        }
+        .preview-wrap{
+            text-align:center;
+        }
+        .preview-img{
+            max-width:100%;
+            max-height:75vh;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown active">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+                <a href="#" onclick="alert('未开发')">车间生产计划</a>
+            </div>
+        </div>
+        <a href="/notice" class="nav-tab">信息公示</a>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+    </div>
+
+    <div class="page-title">安全隐患整改台账-9月24日更新</div>
+
+    <div id="riskApp">
+        {% raw %}
+        <el-table
+          stripe
+          border
+          height="calc(100vh - 200px)"
+          :data="tableData"
+          :header-cell-style="{background:'#205493', color:'#fff', fontWeight:'bold'}"
+          style="width:100%;"
+        >
+            <el-table-column type="index" label="序号" width="70" align="center"></el-table-column>
+            <el-table-column prop="problem" label="问题隐患" min-width="220" align="center" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="measure" label="整改措施" min-width="220" align="center" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="checkTime" label="隐患排查时间" width="160" align="center"></el-table-column>
+            <el-table-column prop="requireTime" label="要求整改时间" width="160" align="center"></el-table-column>
+            <el-table-column label="整改完成时间" width="160" align="center">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.finishTime" size="small" @change="updateFinishTime(scope.row)" placeholder="编辑完成时间"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column label="整改前" width="160" align="center">
+                <template slot-scope="scope">
+                    <img v-if="scope.row.id" class="table-img"
+                         :src="'/static/assets/img/imgbf/' + scope.row.id + '.jpg'"
+                         @click="previewImg('/static/assets/img/imgbf/' + scope.row.id + '.jpg')"
+                         @error="$event.target.style.display='none'">
+                    <div v-else class="no-img">暂无图片</div>
+                </template>
+            </el-table-column>
+            <el-table-column label="整改后" width="180" align="center">
+                <template slot-scope="scope">
+                    <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                        <img v-if="scope.row.imgAfter" class="table-img" :src="scope.row.imgAfter" @click="previewImg(scope.row.imgAfter)">
+                        <div v-else class="no-img">暂无图片</div>
+                        <div style="display:flex;flex-direction:column;gap:4px;justify-content:center;height:72px;">
+                            <el-button size="mini" type="primary" class="op-btn" @click="triggerUpload(scope.row, 'imgAfter')" style="margin:0;">上传</el-button>
+                            <el-button v-if="scope.row.imgAfter" size="mini" type="danger" class="op-btn" @click="deleteImg(scope.row, 'imgAfter')" style="margin:0;">删除</el-button>
+                        </div>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column label="备注" min-width="180" align="center">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.remark" size="small" @change="updateRemark(scope.row)" placeholder="编辑备注"></el-input>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;" @change="handleFileChange">
+
+        <!-- 图片预览弹窗 -->
+        <el-dialog title="图片预览" :visible.sync="showPreview" width="800px" top="5vh" append-to-body>
+            <div class="preview-wrap">
+                <img class="preview-img" :src="previewUrl" alt="预览图">
+            </div>
+        </el-dialog>
+        {% endraw %}
+    </div>
+
+    <script src="{{ url_for('static', filename='lib/elementUI/vue.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/elementUI/element-ui.min.js') }}"></script>
+    <script>
+    Vue.use(ELEMENT);
+    new Vue({
+      el: '#riskApp',
+      data () {
+        return {
+          tableData: [],
+          showPreview: false,
+          previewUrl: "",
+          uploadRow: null,
+          uploadField: ""
+        }
+      },
+      mounted(){
+        this.loadDbData();
+      },
+      methods: {
+        async loadDbData(){
+          try{
+            const resp = await fetch("/api/risk/list");
+            const data = await resp.json();
+            this.tableData = data;
+          }catch(err){
+            console.error("数据库读取失败",err);
+          }
+        },
+        async updateFinishTime(row){
+          try{
+            await fetch("/api/risk/update_finish_time", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({ id: row.id, finishTime: row.finishTime })
+            })
+          }catch(err){
+            console.error("保存失败", err);
+            this.$message.error("整改完成时间保存失败");
+          }
+        },
+        async updateRemark(row){
+          try{
+            await fetch("/api/risk/update_remark", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({ id: row.id, remark: row.remark })
+            })
+          }catch(err){
+            console.error("保存失败", err);
+            this.$message.error("备注保存失败");
+          }
+        },
+        previewImg(url){
+          this.previewUrl = url;
+          this.showPreview = true;
+        },
+        triggerUpload(row, field){
+          this.uploadRow = row;
+          this.uploadField = field;
+          document.getElementById("hiddenFileInput").value = "";
+          document.getElementById("hiddenFileInput").click();
+        },
+        async handleFileChange(e){
+          const file = e.target.files[0];
+          if(!file) return;
+          if(!this.uploadRow || !this.uploadField) return;
+          const maxSize = 5 * 1024 * 1024;
+          if(file.size > maxSize){
+            this.$message.error("图片不能超过5MB");
+            return;
+          }
+          try{
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("row_id", this.uploadRow.id);
+            const resp = await fetch("/api/risk/upload_img", {
+              method: "POST",
+              body: formData
+            });
+            const ret = await resp.json();
+            if(ret.code === 0){
+              await fetch("/api/risk/update_img", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ id: this.uploadRow.id, field: this.uploadField, url: ret.url })
+              });
+              this.uploadRow[this.uploadField] = ret.url;
+              this.$message.success("上传成功");
+            }else{
+              this.$message.error(ret.msg || "上传失败");
+            }
+          }catch(err){
+            console.error("上传异常", err);
+            this.$message.error("上传失败");
+          }
+        },
+        async deleteImg(row, field){
+          this.$confirm("确定删除这张图片吗？", "提示", {
+              confirmButtonText: "确定",
+              cancelButtonText: "取消",
+              type: "warning"
+          }).then(async () => {
+            try{
+              await fetch("/api/risk/delete_img", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ id: row.id, field: field, url: row[field] })
+              });
+              row[field] = "";
+              this.$message.success("删除成功");
+            }catch(err){
+              console.error("删除异常", err);
+              this.$message.error("删除失败");
+            }
+          })
+        }
+      }
+    })
+    </script>
+</body>
+</html>

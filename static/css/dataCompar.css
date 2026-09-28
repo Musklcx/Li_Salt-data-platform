@@ -1,0 +1,89 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        /* 页面总布局：左侧菜单 + 右侧内容区 */
+        .page-wrap {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        /* =========左侧侧边栏========= */
+        .left-sidebar {
+            width: 150px;
+            min-width:50px;
+            background-color: #353c64;
+            color:#ffffff;
+            overflow-y:auto;
+            padding-top:10px;
+            transition: width 0.3s ease;
+        }
+        /* 侧边栏收起状态 */
+        .left-sidebar.collapsed{
+            width:50px;
+        }
+        /* 折叠按钮样式 */
+        .sidebar-toggle-wrap{
+            text-align: right;
+            padding:4px 8px;
+        }
+        #sidebarToggleBtn{
+            background:#444b78;
+            color:#fff;
+            border:none;
+            width:34px;
+            height:28px;
+            cursor:pointer;
+            border-radius:4px;
+            font-size:14px;
+        }
+        /* 菜单文字：收起状态隐藏文字 */
+        .sidebar-menu-item {
+            padding:12px 14px;
+            cursor:pointer;
+            white-space: nowrap;
+        }
+        .left-sidebar.collapsed .menu-text{
+            display:none;
+        }
+        .sidebar-menu-item.active {
+            background-color:#303b57;
+            color:#40a9ff;
+        }
+        /* =========右侧大容器（切换内容的总显示区）========= */
+        .right-main {
+            flex: 1;
+            height: 100vh;
+            overflow:hidden;
+            background:#f3f4f6;
+        }
+        /* 每一个切换页面，默认全部隐藏，只显示激活那一个 */
+        .content-page {
+            width:100%;
+            height:100%;
+            display:none;
+            padding:10px;
+            overflow:auto;
+        }
+        .content-page.active {
+            display:block;
+        }
+        /* 面板标题样式 */
+        .page-title{
+            font-size:16px;
+            font-weight:bold;
+            margin-bottom:12px;
+            padding-bottom:8px;
+            border-bottom:1px solid #ddd;
+        }
+        /* 适配你原有看板内部元素高度 */
+        #chart {
+            width:100%;
+            height:450px;
+        }

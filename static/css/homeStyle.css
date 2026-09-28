@@ -1,0 +1,349 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Microsoft Yahei", sans-serif;
+}
+
+html,body,.page-wrap,.right-main{
+    height:100%;
+    margin:0;
+}
+
+body {
+    background-color: #f4f7fa;
+}
+
+.page-wrap {
+    height: 100%;
+    display: flex;
+}
+.right-main {
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+}
+.content-page {
+    height: 100%;
+    display: none;
+    padding:12px;
+    box-sizing: border-box;
+}
+.content-page.active {
+    display: flex;
+    flex-direction: column;
+}
+/* 信息公示页面：只有激活时才用纵向flex（重要，否则切走不隐藏） */
+#page_notice.content-page.active {
+    flex-direction: column;
+}
+/* 表格容器自动填充剩余高度 */
+.table-wrap.notice-table {
+    flex: 1;
+    overflow: auto;
+}
+/* 固定表头样式（信息公示表格用，生产数据表格无.table类不受影响） */
+.table thead th {
+    position: sticky;
+    top:0;
+    background:#205493;
+    color:#fff;
+    z-index:2;
+    white-space: nowrap;
+}
+.table td, .table th{
+    white-space: nowrap;
+}
+
+.stat-bar {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: #ffffff;
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 16px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    font-weight: bold;
+}
+
+.top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.metric-group>button {
+    padding: 7px 14px;
+    border: 1px solid #2b579a;
+    background: #fff;
+    color: #2b579a;
+    border-radius: 4px;
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+.metric-group>button.active {
+    background: #2b579a;
+    color: #fff;
+}
+
+.right-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.right-group button {
+    padding: 6px 12px;
+    border: 1px solid #4080ff;
+    background: #fff;
+    color: #4080ff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.right-group button.active {
+    background: #4080ff;
+    color: #fff;
+}
+
+.right-group input {
+    padding: 5px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#chart {
+    width: 100%;
+    height: 420px;
+    background: #ffffff;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.table-wrap {
+    width: 100%;
+    overflow: auto;
+    background: #fff;
+    border-radius: 6px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: center;
+    font-size:13px;
+}
+
+th {
+    background-color: #2b579a;
+    color: white;              /* ← 已恢复 */
+    position: sticky;
+    top: 0;
+}
+
+/* =========信息公示页面样式========= */
+.notice-card {
+    background: #fff;
+    padding:24px;
+    border-radius:12px;
+    box-shadow: 0 2px 10px #00000012;
+    height:100%;
+}
+.notice-card h4 {
+    font-size:20px;
+    margin-bottom:16px;
+}
+.notice-card p {
+    font-size:16px;
+    margin:8px 0;
+}
+.notice-filter-wrap {
+    background:#fff;
+    padding:16px 20px;
+    border-radius:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 2px 10px #00000010;
+}
+.notice-filter-wrap select,
+.notice-filter-wrap input{
+    padding:6px 8px;
+    border:1px solid #b8c2cc;
+    border-radius:4px;
+}
+.notice-table{
+    overflow-x:auto;
+}
+.notice-table table{
+    min-width:1600px;
+}
+.notice-table th,.notice-table td{
+    white-space:nowrap;
+    text-align:center;
+}
+
+.table{
+    width:100%;
+}
+
+/* ========== 下载专区页面样式 ========== */
+/* ========== 下载专区：左右双栏 固定高度防错位 ========== */
+.download-wrap {
+    padding: 12px 16px 24px;
+    display: flex;
+    gap: 40px;      /* ← 这里控制【左栏】和【右栏】之间横向距离 */
+}
+
+.download-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;  /* ← 这个是同一列上下两个区块的间距：区块1 ↔ 区块2，区块3 ↔ 区块4 */
+}
+
+.download-block {
+    display: flex;
+    flex-direction: column;
+    height: 420px; /* ✅ 固定整个区块总高度，所有区块统一高 */
+    background: #f4f7fa;
+}
+
+/* 区块标题 */
+.download-block-title {
+    color: #0257b8;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    padding-left: 4px;
+    border-left: 4px solid #0257b8;
+    line-height: 1.4;
+}
+
+/* 文件列表区域：弹性占满剩余空间，超出滚动 */
+.download-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #fff;
+    padding: 4px 12px;
+    margin-bottom: 12px;
+}
+
+/* 单条文件 */
+.download-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 2px;
+    border-bottom: 1px dashed #e6e8eb;
+}
+
+.download-item:last-child {
+    border-bottom: none;
+}
+
+.download-item a {
+    flex: 1;
+    color: #222;
+    text-decoration: none;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.download-item a:hover {
+    color: #0257b8;
+    text-decoration: underline;
+}
+
+.download-date {
+    flex-shrink: 0;
+    color: #888;
+    font-size: 14px;
+}
+
+/* 分页栏：固定在区块底部，位置永远不动 */
+.download-pagination {
+    flex-shrink: 0; /* ✅ 禁止分页区域压缩，固定在底部 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: #555;
+    padding: 4px 6px 10px;
+}
+
+.download-pagination button {
+    border: 1px solid #cfd3da;
+    background: #fff;
+    color: #333;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.download-pagination button:hover:not(:disabled) {
+    background: #0257b8;
+    color: #fff;
+    border-color: #0257b8;
+}
+
+.download-pagination button:disabled {
+    color: #bbb;
+    background: #f7f8fa;
+    cursor: not-allowed;
+}
+
+.download-pagination input {
+    width: 52px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid #cfd3da;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 14px;
+}
+
+/* 滚动条 */
+.download-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.download-list::-webkit-scrollbar-thumb {
+    background: #c7ccd4;
+    border-radius: 4px;
+}
+
+.download-list::-webkit-scrollbar-thumb:hover {
+    background: #aeb4bd;
+}
+
+/* 小屏幕自动变上下布局 */
+@media (max-width: 1200px) {
+    .download-wrap {
+        flex-direction: column;
+    }
+}

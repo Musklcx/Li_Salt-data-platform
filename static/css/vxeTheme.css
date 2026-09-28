@@ -1,0 +1,74 @@
+/* vxe-table 锂盐车间平台统一主题样式 */
+body {
+    background-color: #f4f7fa;
+    padding: 20px;
+    margin: 0;
+    font-family: "Microsoft Yahei", sans-serif;
+}
+:root {
+    /* 字体颜色 */
+    --vxe-ui-font-color: rgba(0, 0, 0, 0.8);
+    --vxe-ui-font-tinge-color: #a0a6af;
+    --vxe-ui-font-lighten-color: #797b80;
+    --vxe-ui-font-darken-color: #333;
+    --vxe-ui-font-disabled-color: #BFBFBF;
+    /* 主色（选中、聚焦、主按钮） */
+    --vxe-ui-font-primary-color: #2b579a;
+    /* 边框 */
+    --vxe-ui-base-popup-border-color: #ddd;
+    --vxe-ui-base-popup-box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.12);
+    --vxe-ui-layout-background-color: #ffffff;
+    /* 输入框 */
+    --vxe-ui-input-border-color: #ccc;
+    --vxe-ui-input-placeholder-color: #C0C4CC;
+    --vxe-ui-input-disabled-background-color: #f3f3f3;
+    --vxe-ui-loading-background-color: rgba(255, 255, 255, 0.5);
+    /* 表格 */
+    --vxe-ui-table-header-background-color: #205493;
+    --vxe-ui-table-border-color: #ddd;
+    --vxe-ui-table-row-hover-background-color: #eef4ff;
+    --vxe-ui-table-row-striped-background-color: #fafafa;
+    --vxe-ui-table-row-hover-striped-background-color: #eef4ff;
+    --vxe-ui-table-row-radio-checked-background-color: #eef4ff;
+    --vxe-ui-table-row-hover-radio-checked-background-color: #d7e6ff;
+    --vxe-ui-table-row-checkbox-checked-background-color: #eef4ff;
+    --vxe-ui-table-row-hover-checkbox-checked-background-color: #d7e6ff;
+    --vxe-ui-table-row-current-background-color: #e6f0ff;
+    --vxe-ui-table-row-hover-current-background-color: #d7e6ff;
+    --vxe-ui-table-column-to-row-background-color: #f8f8f9;
+    --vxe-ui-table-column-hover-background-color: #e8efff;
+    --vxe-ui-table-column-current-background-color: var(--vxe-ui-table-row-current-background-color);
+    --vxe-ui-table-column-hover-current-background-color: var(--vxe-ui-table-row-hover-current-background-color);
+    --vxe-ui-table-fixed-scrolling-box-shadow-color: rgba(0, 0, 0, 0.12);
+    --vxe-ui-table-drag-over-background-color: rgba(32, 84, 147, 0.1);
+}
+/* 表头文字强制白色 */
+.vxe-table .vxe-header--column {
+    color: #ffffff;
+    font-weight: bold;
+    background-color: #205493;
+    font-size: 14px;
+}
+/* 表格内容单元格字体 */
+.vxe-table .vxe-cell {
+  font-size: 14px;
+}
+/* 弹窗单元格字体 */
+.form-row,.form-row-big{
+  font-size:18px;
+}
+/* 表格圆角 */
+.vxe-table {
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+}
+/* 表头排序箭头白色 */
+.vxe-table .vxe-sort--asc-btn,
+.vxe-table .vxe-sort--desc-btn {
+    color: rgba(255,255,255,0.8);
+}
+.vxe-table .vxe-sort--asc-btn.actived,
+.vxe-table .vxe-sort--desc-btn.actived {
+    color: #fff;
+}

@@ -1,0 +1,625 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 人员概况</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homeStyle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/venobox/venobox.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/icofont/icofont.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        /* 员工卡片一行6张，统一排列样式 */
+        .portfolio-container .portfolio-item {
+            flex: 0 0 16.666%;
+            max-width: 16.666%;
+            padding: 8px;
+        }
+        .portfolio-wrap {
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: 100%;
+        }
+        .portfolio-wrap img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        .portfolio-info {
+            padding: 10px;
+            text-align: center;
+        }
+        .portfolio-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+        }
+        .portfolio-info p {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .portfolio-info h6 {
+            margin: 0;
+            font-size: 13px;
+            color: #888;
+        }
+        @media (max-width: 1200px) {
+            .portfolio-container .portfolio-item {
+                flex: 0 0 25%;
+                max-width: 25%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+                <a href="#" onclick="alert('未开发')">车间生产计划</a>
+            </div>
+        </div>
+        <a href="/notice" class="nav-tab">信息公示</a>
+        <a href="/staff" class="nav-tab active">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+    </div>
+
+    <section id="portfolio" class="portfolio section-bg">
+        <div class="container">
+            <div class="section-title">
+                <h2> 员工风采</h2>
+                <p>汇聚各岗位同仁，凝心聚力，协同共进。</p>
+            </div>
+            <div class="row">
+                <div class="col-lg-12">
+                    <ul id="portfolio-flters">
+                        <li data-filter="*" class="filter-active">全部</li>
+                        <li data-filter=".filter-banzhang">班长</li>
+                        <li data-filter=".filter-zhongkong">中控</li>
+                        <li data-filter=".filter-wastewater">废水</li>
+                        <li data-filter=".filter-mvr">MVR</li>
+                        <li data-filter=".filter-forklift">叉车</li>
+                        <li data-filter=".filter-hecheng">合成</li>
+                        <li data-filter=".filter-na2so4">硫酸钠</li>
+                        <li data-filter=".filter-jianghua">浆化</li>
+                        <li data-filter=".filter-lixin">离心</li>
+                        <li data-filter=".filter-sibeng">司泵</li>
+                        <li data-filter=".filter-tiaoliao">调料</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- 班长3名员工 -->
+            <div class="row portfolio-container">
+                <div class="col-lg-2 col-md-4 portfolio-item filter-banzhang">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0065.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>代 葵</h4>
+                            <p>HBRQ-0065</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：40</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-banzhang">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0050.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>黄 冲</h4>
+                            <p>HBRQ-0050</p>
+                            <h6>衣：185<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-banzhang">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0085.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>杜江龙</h4>
+                            <p>HBRQ-0085</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 中控6名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-zhongkong">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0170.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>张中玉</h4>
+                            <p>HBRQ-0170</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：40</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-zhongkong">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0206.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>付华蓉</h4>
+                            <p>HBRQ-0206</p>
+                            <h6>衣：160<span style="margin-left:12px;"></span>鞋：37</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-zhongkong">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0214.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>熊 月</h4>
+                            <p>HBRQ-0214</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：38</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-zhongkong">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0204.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>王贝贝</h4>
+                            <p>HBRQ-0204</p>
+                            <h6>衣：160<span style="margin-left:12px;"></span>鞋：36</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-zhongkong">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0067.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>梁文娟</h4>
+                            <p>HBRQ‑0067</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：37</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 废水岗位3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-wastewater">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0046.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>张光正</h4>
+                            <p>HBRQ-0046</p>
+                            <h6>衣：180<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-wastewater">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0047.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>刘显红</h4>
+                            <p>HBRQ-0047</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：43</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-wastewater">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0082.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>荣三华</h4>
+                            <p>HBRQ-0082</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- MVR巡检3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-mvr">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0166.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>李朋朋</h4>
+                            <p>HBRQ-0166</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-mvr">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0070.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>冯成贵</h4>
+                            <p>HBRQ-0070</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-mvr">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0071.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>文 成</h4>
+                            <p>HBRQ-0071</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：40</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 叉车岗3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-forklift">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0199.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>汤乐飞</h4>
+                            <p>HBRQ-0199</p>
+                            <h6>衣：180<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-forklift">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0169.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>黄 为</h4>
+                            <p>HBRQ-0169</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-forklift">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0216.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>付军华</h4>
+                            <p>HBRQ-0216</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 合成岗8名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0068.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>黄祥松</h4>
+                            <p>HBRQ-0068</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0084.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>王 诚</h4>
+                            <p>HBRQ-0084</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0119.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>代兆琴</h4>
+                            <p>HBRQ-0119</p>
+                            <h6>衣：180<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0142.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>汤乐飞</h4>
+                            <p>HBRQ-0142</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：38</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0149.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>吴忠诗</h4>
+                            <p>HBRQ-0149</p>
+                            <h6>衣：170<span style="margin-left:12px;"></span>鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0162.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>梁海生</h4>
+                            <p>HBRQ-0162</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0163.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>谢惠雄</h4>
+                            <p>HBRQ-0163</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：43</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-hecheng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0219.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>张文文</h4>
+                            <p>HBRQ-0219</p>
+                            <h6>衣：175<span style="margin-left:12px;"></span>鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 硫酸钠岗3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-na2so4">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0126.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>代文平</h4>
+                            <p>HBRQ-0126</p>
+                            <h6>衣：180<span style="margin-left:12px;">鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-na2so4">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0135.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>江玉山</h4>
+                            <p>HBRQ-0135</p>
+                            <h6>衣：185<span style="margin-left:12px;">鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-na2so4">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0253.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>王 刚</h4>
+                            <p>HBRQ-0253</p>
+                            <h6>衣：185<span style="margin-left:12px;">鞋：43</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 浆化岗3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-jianghua">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0066.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>张纯燕</h4>
+                            <p>HBRQ-0066</p>
+                            <h6>衣：185<span style="margin-left:12px;">鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-jianghua">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0069.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>徐正金</h4>
+                            <p>HBRQ-0069</p>
+                            <h6>衣：180<span style="margin-left:12px;">鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-jianghua">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0177.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>张泽林</h4>
+                            <p>HBRQ-0177</p>
+                            <h6>衣：180<span style="margin-left:12px;">鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 离心岗3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-lixin">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0121.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>张海平</h4>
+                            <p>HBRQ-0121</p>
+                            <h6>衣：180<span style="margin-left:12px;">鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-lixin">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0080.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>康孝阳</h4>
+                            <p>HBRQ-0080</p>
+                            <h6>衣：175<span style="margin-left:12px;">鞋：40</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-lixin">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0127.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>陈 虎</h4>
+                            <p>HBRQ-0127</p>
+                            <h6>衣：180<span style="margin-left:12px;">鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 司泵岗3名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-sibeng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0148.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>魏小平</h4>
+                            <p>HBRQ-0148</p>
+                            <h6>衣：170<span style="margin-left:12px;">鞋：40</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-sibeng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0087.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>戴居荣</h4>
+                            <p>HBRQ-0087</p>
+                            <h6>衣：175<span style="margin-left:12px;">鞋：40</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-sibeng">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0155.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>何 长</h4>
+                            <p>HBRQ-0155</p>
+                            <h6>衣：175<span style="margin-left:12px;">鞋：42</h6>
+                        </div>
+                    </div>
+                </div>
+                <!-- 调料岗2名员工 -->
+                <div class="col-lg-2 col-md-4 portfolio-item filter-tiaoliao">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0072.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>徐林</h4>
+                            <p>HBRQ-0072</p>
+                            <h6>衣：165<span style="margin-left:12px;">鞋：38</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 portfolio-item filter-tiaoliao">
+                    <div class="portfolio-wrap">
+                        <img src="{{ url_for('static',filename='assets/img/portfolio/HBRQ-0124.jpg') }}" class="img-fluid" alt="">
+                        <div class="portfolio-info">
+                            <h4>李德明</h4>
+                            <p>HBRQ-0124</p>
+                            <h6>衣：175<span style="margin-left:12px;">鞋：41</h6>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </section>
+
+    <section id="team" class="team">
+        <div class="container">
+            <div class="section-title">
+                <h2>管理人员</h2>
+                <p>统筹规划，引领生产有序开展。</p>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="member">
+                        <div class="pic"><img src="{{ url_for('static',filename='assets/img/team/HBRQ-0015.jpg') }}" class="img-fluid" alt=""></div>
+                        <div class="member-info">
+                            <h4>高华山</h4>
+                            <span>锂盐车间主任</span>
+                            <span>HBRQ-0015</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="member">
+                        <div class="pic"><img src="{{ url_for('static',filename='assets/img/team/HBRQ-0194.jpg') }}" class="img-fluid" alt=""></div>
+                        <div class="member-info">
+                            <h4>胡 雄</h4>
+                            <span>生产工程师</span>
+                            <span>HBRQ-0194</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="member">
+                        <div class="pic"><img src="{{ url_for('static',filename='assets/img/team/HBRQ-0279.jpg') }}" class="img-fluid" alt=""></div>
+                        <div class="member-info">
+                            <h4>陆春晓</h4>
+                            <span>统计员</span>
+                            <span>HBRQ-0279</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/isotope-layout/isotope.pkgd.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/venobox/venobox.min.js') }}"></script>
+<script>
+// 页面加载后初始化isotope筛选和venobox弹窗
+$(function(){
+    $('.portfolio-container').isotope({
+        itemSelector: '.portfolio-item',
+        layoutMode: 'fitRows'
+    });
+    $('#portfolio-flters li').on('click', function () {
+        $('#portfolio-flters li').removeClass('filter-active');
+        $(this).addClass('filter-active');
+        $('.portfolio-container').isotope({ filter: $(this).data('filter') });
+    });
+    $('.venobox').venobox();
+});
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

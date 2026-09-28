@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 现场问题</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/element-ui.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        .detail-wrap{
+            display:flex;
+            gap:20px;
+            width:100%;
+            height:100%;
+        }
+        .detail-left{
+            width:45%;
+            border:1px solid #409eff;
+            border-radius:4px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            min-height:320px;
+        }
+        .detail-left img{
+            max-width:90%;
+            max-height:90%;
+            object-fit:contain;
+        }
+        .detail-right{
+            flex:1;
+        }
+        .form-row{
+            display:flex;
+            align-items:center;
+            margin:20px 0;
+        }
+        .form-row-big{
+            display:flex;
+            align-items:center;
+            margin:40px 0;
+        }
+        .form-label{
+            width:120px;
+            flex-shrink:0;
+        }
+        .stat-bar{
+            padding:12px 16px;
+            background:#fff;
+            color:#000;
+            border-radius:6px;
+            margin-bottom:12px;
+            border:1px solid #eee;
+            font-size:20px;
+            font-weight:bold;
+        }
+        /* 已完成行绿色高亮（含斑马纹行：单元格背景一起覆盖） */
+        .row-done,
+        .row-done td {
+            background-color: #229451 !important;
+            color: #fff !important;
+        }
+        /* 未完成行悬停：强制浅灰，防止任何残留/旧样式把悬停行染成绿色 */
+        .el-table--enable-row-hover .el-table__body tr:not(.row-done):hover > td.el-table__cell,
+        .el-table--enable-row-hover .el-table__body tr:not(.row-done):hover > td {
+            background-color: #F5F7FA !important;
+        }
+        /* 已完成行悬停：保持绿色，不被其他 hover 样式覆盖 */
+        .row-done:hover,
+        .row-done:hover > td.el-table__cell,
+        .row-done:hover > td {
+            background-color: #229451 !important;
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown active">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+                <a href="#" onclick="alert('未开发')">车间生产计划</a>
+            </div>
+        </div>
+        <a href="/notice" class="nav-tab">信息公示</a>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+    </div>
+
+    <div id="hazardApp">
+        {% raw %}
+        <div class="stat-bar">
+            30吨蒸发问题总数：{{ showTableData.length }}
+            <span style="margin-left:40px;color:#e74c3c;">未完成：{{ noFinishCount }}</span>
+            <span style="margin-left:40px;color:#229451;">已完成：{{ doneCount }}</span>
+        </div>
+
+        <el-table
+          stripe
+          border
+          height="calc(100vh - 220px)"
+          :data="showTableData"
+          @row-click="cellClickEvent"
+          :row-class-name="rowClassName"
+          :header-cell-style="{background:'#205493', color:'#fff', fontWeight:'bold'}"
+          style="width:100%;"
+        >
+            <el-table-column type="index" label="序号" width="70" align="center"></el-table-column>
+            <el-table-column prop="question" label="问题描述" min-width="240" align="center" show-overflow-tooltip></el-table-column>
+            <el-table-column label="现场图片" width="140" align="center">
+                <template slot-scope="scope">
+                    <img :src="scope.row.imgUrl" style="width:40px;height:40px;object-fit:contain;cursor:pointer;">
+                </template>
+            </el-table-column>
+            <el-table-column prop="safety" label="存在隐患" min-width="240" align="center" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="measures" label="处理措施" min-width="240" align="center" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="done" label="是否完成" width="120" align="center"></el-table-column>
+        </el-table>
+
+        <!-- 编辑弹窗 -->
+        <el-dialog title="查看详情" :visible.sync="showDetails" width="1020px" :close-on-click-modal="false" append-to-body>
+            <div class="detail-wrap">
+                <div class="detail-left">
+                    <img :src="detailImg" alt="现场图片">
+                </div>
+                <div class="detail-right">
+                    <div class="form-row">
+                        <div class="form-label">编号：</div>
+                        <div>{{currentRow.id}}</div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-label">问题描述：</div>
+                        <div>{{currentRow.question}}</div>
+                    </div>
+                    <div class="form-row-big">
+                        <div class="form-label">存在隐患：</div>
+                        <div>{{currentRow.safety}}</div>
+                    </div>
+                    <div class="form-row-big">
+                        <div class="form-label">处理措施：</div>
+                        <el-input v-model="editForm.measures" placeholder="请输入处理措施"></el-input>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-label">是否完成：</div>
+                        <el-radio-group v-model="editForm.done">
+                            <el-radio label="是">是</el-radio>
+                            <el-radio label="否">否</el-radio>
+                        </el-radio-group>
+                    </div>
+                    <div style="text-align:right;margin-top:30px;">
+                        <el-button type="primary" size="large" @click="saveEdit">确认</el-button>
+                    </div>
+                </div>
+            </div>
+        </el-dialog>
+        {% endraw %}
+    </div>
+
+    <script src="{{ url_for('static', filename='lib/elementUI/vue.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/elementUI/element-ui.min.js') }}"></script>
+    <script>
+    Vue.use(ELEMENT);
+    new Vue({
+      el: '#hazardApp',
+      data () {
+        return {
+          showDetails: false,
+          detailImg:"",
+          currentRow: {},
+          editForm:{
+            measures:"",
+            done:""
+          },
+          tableData: [],
+          showTableData: [],
+          isAuthed: false,
+          authPassword: "ly1234"
+        }
+      },
+      computed: {
+        doneCount(){
+            return this.showTableData.filter(i=>i.done === "是").length
+        },
+        noFinishCount(){
+            return this.showTableData.filter(i=>i.done !== "是").length
+        }
+      },
+      mounted(){
+        this.loadDbData();
+      },
+      methods: {
+        async loadDbData(){
+          try{
+            const resp = await fetch("/api/hazard/list");
+            const data = await resp.json();
+            this.tableData = data;
+            this.sortData();
+          }catch(err){
+            console.error("数据库读取失败",err);
+          }
+        },
+        sortData(){
+          const filterList = this.tableData.filter(item=>{
+            return !(!item.question && !item.safety && !item.measures && !item.done)
+          })
+          const noFinish = filterList.filter(item => item.done !== "是")
+          const finished = filterList.filter(item => item.done === "是")
+          this.showTableData = [...noFinish, ...finished]
+        },
+        rowClassName({ row }){
+          if(row.done === "是"){
+            return 'row-done'
+          }
+          return ''
+        },
+        cellClickEvent (row) {
+          this.currentRow = row
+          this.detailImg = row.imgUrl
+          this.editForm.measures = row.measures
+          this.editForm.done = row.done
+          this.showDetails = true
+        },
+        async saveEdit(){
+          if(!this.isAuthed){
+            const inputPwd = prompt("请输入操作密码：");
+            if(inputPwd === null){
+              return;
+            }
+            if(inputPwd !== this.authPassword){
+              alert("密码错误，无法保存");
+              return;
+            }
+            this.isAuthed = true;
+          }
+          try{
+            const resp = await fetch("/api/hazard/update", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({
+                id: this.currentRow.id,
+                measures: this.editForm.measures,
+                done: this.editForm.done
+              })
+            })
+            const ret = await resp.json();
+            if(ret.code === 0){
+              this.showDetails = false;
+              this.loadDbData();
+            }
+          }catch(err){
+            console.error("保存失败", err);
+            alert("保存失败，请检查后端接口");
+          }
+        }
+      }
+    })
+    </script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 信息公示</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homeStyle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+                <a href="#" onclick="alert('未开发')">车间生产计划</a>
+            </div>
+        </div>
+        <a href="/notice" class="nav-tab active">信息公示</a>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+    </div>
+
+    <div class="row g-4 mb-4">
+         <div class="col-lg-3">
+            <div class="notice-card">
+                <h4 id="planTitle">X月计划:</h4>
+                <p>碳酸锂：<span id="planLi">0</span>，产量：<span id="totalLi">0</span>，<span id="liDiffText">0</span></p>
+                <p>硫酸钠：<span id="planNa">0</span>，产量：<span id="totalNa">0</span>，<span id="naDiffText">0</span></p>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="notice-card">
+                <h4>甲班完成:</h4>
+                <p>碳酸锂: <span id="jiaLi">0</span>，比例 <span id="jiaLiRate">0%</span></p>
+                <p>硫酸钠: <span id="jiaNa">0</span>，比例 <span id="jiaNaRate">0%</span></p>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="notice-card">
+                <h4>乙班完成:</h4>
+                <p>碳酸锂: <span id="yiLi">0</span>，比例 <span id="yiLiRate">0%</span></p>
+                <p>硫酸钠: <span id="yiNa">0</span>，比例 <span id="yiNaRate">0%</span></p>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="notice-card">
+                <h4>丙班完成:</h4>
+                <p>碳酸锂: <span id="bingLi">0</span>，比例 <span id="bingLiRate">0%</span></p>
+                <p>硫酸钠: <span id="bingNa">0</span>，比例 <span id="bingNaRate">0%</span></p>
+            </div>
+        </div>
+    </div>
+    <div class="notice-filter-wrap mb-4">
+        <div class="filter-left">
+            <span>班组筛选：</span>
+            <select id="banzuSelect">
+                <option value="全部">全部</option>
+                <option value="甲">甲</option>
+                <option value="乙">乙</option>
+                <option value="丙">丙</option>
+            </select>
+        </div>
+        <div class="filter-right">
+            <span>月份选择：</span>
+            <input type="month" id="monthSelect">
+            <button class="btn btn-primary" id="noticeSearchBtn">搜索</button>
+        </div>
+    </div>
+    <div class="table-wrap notice-table" style="max-height:calc(100vh - 350px);overflow:auto;">
+        <table class="table table-striped">
+            <thead id="noticeTableHead" style="position:sticky;top:0;background:#fff;z-index:1;">
+                <tr>
+                    <th>日期</th>
+                    <th>班组</th>
+                    <th>碳酸锂产出</th>
+                    <th>硫酸钠</th>
+                    <th>蒸发前液量</th>
+                    <th>合成前液量</th>
+                    <th>卸渣量</th>
+                    <th>蒸发冷凝水</th>
+                    <th>碳酸钠</th>
+                    <th>投炭、氟量</th>
+                    <th>产出锂渣</th>
+                    <th>回投锂渣</th>
+                    <th>镍渣</th>
+                    <th>104返镁液</th>
+                    <th>104废液</th>
+                    <th>外排水量</th>
+                    <th>钴渣量</th>
+                    <th>清合成釜</th>
+                    <th>更换滤布</th>
+                </tr>
+            </thead>
+            <tbody id="noticeTableBody">
+            </tbody>
+        </table>
+    </div>
+
+<script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js02/noticeScr.js') }}"></script>
+</body>
+</html>
+
