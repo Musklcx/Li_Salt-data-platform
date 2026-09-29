@@ -139,14 +139,36 @@ def issue_token(user_id, email):
     return jwt.encode(payload, auth_config('SECRET_KEY'), algorithm=auth_config('JWT_ALGORITHM', 'HS256'))
 
 
+def _extract_token():
+    """优先取请求头 Authorization: Bearer <token>，其次取 Cookie 里的 token"""
+    auth = request.headers.get('Authorization', '')
+    if auth.startswith('Bearer '):
+        return auth.split(' ', 1)[1].strip()
+    return request.cookies.get('token') or ''
+
+
+def resolve_user():
+    """全局校验：token 有效返回 (user_id, email)，否则返回 (None, None)"""
+    token = _extract_token()
+    if not token:
+        return None, None
+    try:
+        payload = jwt.decode(token, auth_config('SECRET_KEY'),
+                             algorithms=[auth_config('JWT_ALGORITHM', 'HS256')])
+    except jwt.ExpiredSignatureError:
+        return None, None
+    except jwt.InvalidTokenError:
+        return None, None
+    return int(payload['sub']), payload.get('email')
+
+
 def login_required(view):
-    """装饰器：校验 Authorization: Bearer <token>，用户信息挂到 g 上。"""
+    """装饰器：校验 Authorization: Bearer <token> 或 Cookie token，用户信息挂到 g 上。"""
     @functools.wraps(view)
     def wrapper(*args, **kwargs):
-        auth = request.headers.get('Authorization', '')
-        if not auth.startswith('Bearer '):
+        token = _extract_token()
+        if not token:
             return jsonify(code=401, msg='未登录或缺少凭证'), 401
-        token = auth.split(' ', 1)[1].strip()
         try:
             payload = jwt.decode(token, auth_config('SECRET_KEY'),
                                  algorithms=[auth_config('JWT_ALGORITHM', 'HS256')])
@@ -272,7 +294,7 @@ def login():
         return jsonify(code=401, msg='邮箱或密码错误'), 401
 
     token = issue_token(row['id'], row['email'])
-    return jsonify(code=0, msg='登录成功', data={
+    resp = jsonify(code=0, msg='登录成功', data={
         'token': token,
         'user': {
             'id': row['id'],
@@ -280,6 +302,21 @@ def login():
             'email': row['email'],
         }
     })
+    # 种 HttpOnly Cookie：地址栏直接访问业务页面/接口也能自动携带凭证
+    resp.set_cookie(
+        'token', token,
+        httponly=True, samesite='Lax', path='/',
+        max_age=auth_config('JWT_EXPIRE_HOURS', 2) * 3600
+    )
+    return resp
+
+
+# ---- API：退出登录（清 Cookie）----
+@auth_bp.post('/api/logout')
+def logout():
+    resp = jsonify(code=0, msg='已退出登录')
+    resp.delete_cookie('token', path='/')
+    return resp
 
 
 # ---- API：当前用户（受 JWT 保护）----

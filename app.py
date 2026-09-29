@@ -1,13 +1,12 @@
-from flask import Flask, jsonify, render_template, redirect
+from flask import Flask, jsonify, render_template, redirect, request, g
 import sqlite3
 import os
 import uuid
 from datetime import datetime
 import socket
-from flask import request
 from PIL import Image
 from werkzeug.utils import secure_filename
-from auth import auth_bp, init_auth_db
+from auth import auth_bp, init_auth_db, resolve_user
 from inventory_bp import inventory_bp, init_inventory_db
 
 app = Flask(__name__)
@@ -40,6 +39,28 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXT = {"png", "jpg", "jpeg", "gif", "bmp", "webp"}
 TARGET_W = 600
 TARGET_H = 800
+
+# ========== 全局登录拦截：除白名单外，页面与接口一律要求已登录 ==========
+PUBLIC_PATHS = {
+    '/', '/login', '/favicon.ico',
+    '/api/login', '/api/register', '/api/register/send-code',
+}
+
+@app.before_request
+def require_login():
+    path = request.path
+    if path in PUBLIC_PATHS or path.startswith('/static'):
+        return None
+    uid, email = resolve_user()
+    if uid is not None:
+        g.user_id = uid
+        g.email = email
+        return None
+    # 未登录：API 返回 401 JSON，页面 302 跳回登录页
+    if path.startswith('/api/'):
+        return jsonify(code=401, msg='未登录或登录已过期'), 401
+    return redirect('/login')
+
 
 # ========== 多页面路由 ==========
 @app.route('/')
