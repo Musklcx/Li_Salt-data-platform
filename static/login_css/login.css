@@ -154,10 +154,10 @@ h1 {
 
 /* ---------- 平台名称（替代社交图标） ---------- */
 .platform-name {
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 600;
     color: #512da8;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     margin-bottom: 15px;
     text-align: center;
     word-break: break-all;

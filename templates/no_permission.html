@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>无权限访问 - 锂盐车间共享平台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{margin:0;font-family:"Microsoft YaHei",Arial,sans-serif;background:#f4f3ee;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#fff;border-radius:14px;padding:40px 48px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.08);max-width:420px;margin:20px}
+.icon{font-size:44px}
+h1{font-size:20px;color:#1a1b1c;margin:14px 0 6px}
+p{font-size:14px;color:#6b7280;line-height:1.7;margin:6px 0}
+.btn{display:inline-block;margin-top:18px;background:#9EACEA;color:#fff;text-decoration:none;padding:9px 30px;border-radius:8px;font-size:14px}
+.btn:hover{opacity:.9}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">🔒</div>
+  <h1>无权限访问</h1>
+  <p>当前账号：{{ email }}{% if role == 'admin' %}（管理员）{% else %}（操作员）{% endif %}</p>
+  <p>仅管理员可访问，如需开通请联系管理员调整权限。</p>
+  <a class="btn" href="/data">返回首页</a>
+</div>
+</body>
+</html>

@@ -64,16 +64,25 @@ PUBLIC_PATHS = {
     '/api/login', '/api/register', '/api/register/send-code',
 }
 
+# 只有管理员能访问的路径前缀（期末金属量盘点整组）
+ADMIN_ONLY_PREFIXES = ('/inventory', '/api/state', '/api/rows', '/api/unlock', '/api/periods', '/api/import')
+
 
 @app.before_request
 def require_login():
     path = request.path
     if path in PUBLIC_PATHS or path.startswith('/static'):
         return None
-    uid, email = resolve_user()
+    uid, email, role = resolve_user()
     if uid is not None:
         g.user_id = uid
         g.email = email
+        g.role = role
+        # 管理员专属路径：非 admin 页面显示 403 提示页，接口返回 403 JSON
+        if path.startswith(ADMIN_ONLY_PREFIXES) and role != 'admin':
+            if path.startswith('/api/'):
+                return jsonify(code=403, msg='无权限访问'), 403
+            return render_template('no_permission.html', email=email, role=role), 403
         return None
     # 未登录：API 返回 401 JSON，页面 302 跳回登录页
     if path.startswith('/api/'):
@@ -85,12 +94,6 @@ def require_login():
 @app.route('/')
 def home():
     return redirect('/login')
-
-
-@app.route('/')
-def index():
-    # Flask标准模板渲染，读取 templates/index.html（历史遗留，实际未使用）
-    return render_template("index.html")
 
 
 if __name__ == '__main__':

@@ -128,11 +128,12 @@ def send_verify_email(to_email, code):
 
 
 # ---- JWT ----
-def issue_token(user_id, email):
+def issue_token(user_id, email, role):
     now = datetime.datetime.utcnow()
     payload = {
         'sub': str(user_id),
         'email': email,
+        'role': role,
         'iat': now,
         'exp': now + datetime.timedelta(hours=auth_config('JWT_EXPIRE_HOURS', 2)),
     }
@@ -148,18 +149,18 @@ def _extract_token():
 
 
 def resolve_user():
-    """全局校验：token 有效返回 (user_id, email)，否则返回 (None, None)"""
+    """全局校验：token 有效返回 (user_id, email, role)，否则返回 (None, None, None)"""
     token = _extract_token()
     if not token:
-        return None, None
+        return None, None, None
     try:
         payload = jwt.decode(token, auth_config('SECRET_KEY'),
                              algorithms=[auth_config('JWT_ALGORITHM', 'HS256')])
     except jwt.ExpiredSignatureError:
-        return None, None
+        return None, None, None
     except jwt.InvalidTokenError:
-        return None, None
-    return int(payload['sub']), payload.get('email')
+        return None, None, None
+    return int(payload['sub']), payload.get('email'), payload.get('role', 'operator')
 
 
 def login_required(view):
@@ -286,20 +287,21 @@ def login():
 
     db = get_db()
     row = db.execute(
-        'SELECT id, username, email, password_hash FROM users WHERE email = ?',
+        'SELECT id, username, email, password_hash, role FROM users WHERE email = ?',
         (email,)
     ).fetchone()
 
     if row is None or not verify_password(password, row['password_hash']):
         return jsonify(code=401, msg='邮箱或密码错误'), 401
 
-    token = issue_token(row['id'], row['email'])
+    token = issue_token(row['id'], row['email'], row['role'])
     resp = jsonify(code=0, msg='登录成功', data={
         'token': token,
         'user': {
             'id': row['id'],
             'username': row['username'],
             'email': row['email'],
+            'role': row['role'],
         }
     })
     # 种 HttpOnly Cookie：地址栏直接访问业务页面/接口也能自动携带凭证
@@ -325,7 +327,7 @@ def logout():
 def me():
     db = get_db()
     row = db.execute(
-        'SELECT id, username, email, created_at FROM users WHERE id = ?',
+        'SELECT id, username, email, role, created_at FROM users WHERE id = ?',
         (g.user_id,)
     ).fetchone()
     if row is None:
@@ -334,5 +336,6 @@ def me():
         'id': row['id'],
         'username': row['username'],
         'email': row['email'],
+        'role': row['role'],
         'created_at': row['created_at'],
     })
