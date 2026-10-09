@@ -186,12 +186,16 @@ def login_required(view):
 # ---- 页面 ----
 @auth_bp.route('/login')
 def login_page():
+    
+    """登录页面"""
     return render_template('login.html')
 
 
 # ---- API：发送注册验证码 ----
 @auth_bp.post('/api/register/send-code')
 def send_code():
+    
+    """发送邮箱注册验证码"""
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
     if not EMAIL_RE.match(email):
@@ -234,6 +238,8 @@ def send_code():
 # ---- API：注册 ----
 @auth_bp.post('/api/register')
 def register():
+    
+    """注册新账号（邮箱+验证码）"""
     data = request.get_json(silent=True) or {}
     username = (data.get('username') or '').strip()
     email = (data.get('email') or '').strip().lower()
@@ -278,6 +284,8 @@ def register():
 # ---- API：登录 ----
 @auth_bp.post('/api/login')
 def login():
+    
+    """账号密码登录，返回 token"""
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
     password = data.get('password') or ''
@@ -316,6 +324,8 @@ def login():
 # ---- API：退出登录（清 Cookie）----
 @auth_bp.post('/api/logout')
 def logout():
+    
+    """退出登录（清除 token）"""
     resp = jsonify(code=0, msg='已退出登录', data=None)
     resp.delete_cookie('token', path='/')
     return resp

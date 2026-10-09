@@ -252,11 +252,15 @@ def summarize_inventory(db, period=None):
 # ---------- 路由 ----------
 @inventory_bp.route('/inventory')
 def inventory_page():
+    
+    """期末金属量盘点页面"""
     return render_template('inventory.html')
 
 
 @inventory_bp.route('/api/state')
 def api_state():
+    
+    """盘点状态与月度趋势（含桑基图数据）"""
     month = request.args.get('month', '') or DEFAULT_MONTH
     db = get_db()
     bal = aggregate_balance(db, month)
@@ -287,6 +291,8 @@ def api_state():
 
 @inventory_bp.route('/api/rows', methods=['POST'])
 def api_add_row():
+    
+    """新增盘点明细行"""
     d = request.get_json(force=True)
     db = get_db()
     period = d.get('period') or DEFAULT_MONTH
@@ -304,6 +310,8 @@ def api_add_row():
 
 @inventory_bp.route('/api/rows/<int:rid>', methods=['PUT'])
 def api_update_row(rid):
+    
+    """更新盘点明细行"""
     d = request.get_json(force=True)
     db = get_db()
     db.execute(
@@ -317,6 +325,8 @@ def api_update_row(rid):
 
 @inventory_bp.route('/api/rows/<int:rid>', methods=['DELETE'])
 def api_delete_row(rid):
+    
+    """删除盘点明细行"""
     db = get_db()
     db.execute('DELETE FROM inventory WHERE id=?', (rid,))
     db.commit()
@@ -325,6 +335,8 @@ def api_delete_row(rid):
 
 @inventory_bp.route('/api/unlock', methods=['POST'])
 def api_unlock():
+    
+    """解锁编辑（密码 admin888）"""
     d = request.get_json(force=True) or {}
     if d.get('password') == EDIT_PASSWORD:
         return ok()
@@ -333,6 +345,8 @@ def api_unlock():
 
 @inventory_bp.route('/api/periods', methods=['GET', 'POST'])
 def api_periods():
+    
+    """盘点期间列表（GET）/ 新增期间（POST）"""
     db = get_db()
     if request.method == 'GET':
         rows = db.execute('SELECT month, start_date, end_date FROM periods ORDER BY month').fetchall()
@@ -353,6 +367,8 @@ def api_periods():
 
 @inventory_bp.route('/api/import', methods=['POST'])
 def api_import():
+    
+    """导入盘点数据"""
     f = request.files.get('file')
     if not f:
         return fail('no file')

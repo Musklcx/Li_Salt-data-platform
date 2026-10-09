@@ -26,8 +26,13 @@ from staff_bp import staff_bp
 from download_bp import download_bp
 from saferisks_bp import saferisks_bp
 from db import close_db, DB_FILE
+from logs_bp import logs_bp
+from docs_bp import docs_bp
+from logger import init_logging
 
 app = Flask(__name__)
+
+init_logging(app)  # 请求日志 / 错误日志 / 运行统计（logger.py）
 
 # ---- 登录认证配置（auth 蓝图使用，移植自 login 项目）----
 app.config['SECRET_KEY'] = os.environ.get(
@@ -54,6 +59,8 @@ app.register_blueprint(notice_bp)
 app.register_blueprint(staff_bp)
 app.register_blueprint(download_bp)
 app.register_blueprint(saferisks_bp)
+app.register_blueprint(logs_bp)
+app.register_blueprint(docs_bp)
 
 # ---- 统一数据库连接：请求结束自动关闭（db.py）----
 app.teardown_appcontext(close_db)
@@ -64,8 +71,9 @@ PUBLIC_PATHS = {
     '/api/login', '/api/register', '/api/register/send-code',
 }
 
-# 只有管理员能访问的路径前缀（期末金属量盘点整组）
-ADMIN_ONLY_PREFIXES = ('/inventory', '/api/state', '/api/rows', '/api/unlock', '/api/periods', '/api/import')
+# 只有管理员能访问的路径前缀（期末金属量盘点整组 + 运行日志/监控 + 接口文档）
+ADMIN_ONLY_PREFIXES = ('/inventory', '/api/state', '/api/rows', '/api/unlock', '/api/periods', '/api/import',
+                       '/logs', '/api/logs', '/api/health', '/docs', '/api/docs')
 
 
 @app.before_request
@@ -103,4 +111,6 @@ if __name__ == '__main__':
     hostname = socket.gethostname()
     print(f"局域网主机名访问地址：http://{hostname}:5000")
     print(f"数据库路径：{DB_FILE}")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # debug=False：关闭 reloader（Windows 上 debug 热重载不稳定，多次导致实例崩溃），
+    # 错误详情已由 logger.py 的 500 统一处理 + logs/error.log 兜底
+    app.run(host="0.0.0.0", port=5000, debug=False)

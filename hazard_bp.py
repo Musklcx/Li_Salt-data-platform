@@ -19,12 +19,16 @@ HAZARD_EDIT_PASSWORD = 'admin888'
 
 @hazard_bp.route('/hazard')
 def page_hazard():
+    
+    """30吨蒸发问题汇总页面"""
     return render_template("hazard.html")
 
 
 # 获取隐患表全部数据
 @hazard_bp.route("/api/hazard/list")
 def hazard_list():
+    
+    """问题汇总列表"""
     rows = query("SELECT ID,`问题描述`,`存在隐患`,`处理措施`,`是否完成` FROM question_table;")
     res_list = []
     img_dir = os.path.join("static", "assets", "img", "table")
@@ -49,6 +53,8 @@ def hazard_list():
 
 @hazard_bp.route("/api/hazard/update", methods=["POST"])
 def hazard_update():
+    
+    """更新问题处理状态/内容"""
     data = request.get_json()
     row_id = data["id"]
     measures = data["measures"]
@@ -62,6 +68,8 @@ def hazard_update():
 
 @hazard_bp.route("/api/hazard/unlock", methods=["POST"])
 def hazard_unlock():
+    
+    """解锁编辑（密码 admin888）"""
     data = request.get_json(force=True) or {}
     if data.get("password") == HAZARD_EDIT_PASSWORD:
         return ok()

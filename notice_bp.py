@@ -15,6 +15,8 @@ notice_bp = Blueprint('notice', __name__)
 
 @notice_bp.route('/notice')
 def page_notice():
+    
+    """班组工作量页面"""
     return render_template("notice.html")
 
 

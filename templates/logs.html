@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>锂盐车间共享平台 - 运行日志</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
+    <style>
+        /* 顶部导航样式（与 data 等页面一致） */
+        .top-nav { display: flex; gap: 2px; margin-bottom: 12px; }
+        .nav-tab {
+            padding: 12px 28px; background: #eee; color: #333;
+            text-decoration: none; font-size: 16px;
+            display: inline-block; cursor: pointer;
+        }
+        .nav-tab.active { background: #e74c3c; color: #fff; }
+        .nav-dropdown { position: relative; }
+        .nav-dropdown-menu {
+            display: none; position: absolute; top: 100%; left: 0;
+            background: #888; min-width: 220px; z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu { display: block; }
+        .nav-dropdown-menu a {
+            display: block; padding: 12px 20px; color: #fff; text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover { background: #666; }
+
+        body { background: #f4f3ee; font-family: "PingFang SC","Microsoft YaHei",sans-serif; }
+        .page-title { font-size: 20px; font-weight: 600; color: #1A1B1C; margin: 18px 0 14px; }
+        .health-cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+        .health-card {
+            flex: 1 1 150px; background: #fff; border: 1px solid #e4e3dd;
+            border-radius: 10px; padding: 14px 16px; min-width: 140px;
+        }
+        .health-card .label { font-size: 12px; color: #6B7280; }
+        .health-card .value { font-size: 22px; font-weight: 600; color: #1A1B1C; margin-top: 4px; }
+        .health-card .value.ok { color: #52C41A; }
+        .health-card .value.bad { color: #EA6668; }
+        .db-chip {
+            display: inline-block; padding: 2px 10px; border-radius: 20px;
+            font-size: 12px; margin: 3px 6px 3px 0;
+        }
+        .db-chip.ok { background: #e8f7ee; color: #389e0d; }
+        .db-chip.bad { background: #fdecec; color: #cf1322; }
+        .log-panel {
+            background: #fff; border: 1px solid #e4e3dd; border-radius: 10px;
+            margin-bottom: 18px; overflow: hidden;
+        }
+        .log-panel .panel-head {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #205493; color: #fff; padding: 10px 16px; font-weight: 600;
+        }
+        .log-panel .panel-head .refresh-btn {
+            background: rgba(255,255,255,.15); color: #fff; border: none;
+            border-radius: 6px; padding: 4px 14px; font-size: 12px; cursor: pointer;
+        }
+        .log-panel pre {
+            margin: 0; padding: 12px 16px; max-height: 420px; overflow: auto;
+            font-size: 12px; line-height: 1.7; color: #333;
+            background: #fff; border: none; font-family: Consolas, monospace;
+            white-space: pre-wrap; word-break: break-all;
+        }
+        .empty-tip { padding: 30px; text-align: center; color: #9ca3af; }
+    </style>
+</head>
+<body>
+<div style="padding:16px;">
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            信息公示 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/notice">班组工作量</a>
+                <a href="/inventory">期末金属量</a>
+            </div>
+        </div>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+
+        <div class="nav-tab nav-dropdown">
+            系统管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/docs">接口文档</a>
+                <a href="/logs">运行日志</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-title">运行日志与监控</div>
+
+    <!-- 健康状态卡片 -->
+    <div class="health-cards" id="healthCards">
+        <div class="health-card">
+            <div class="label">服务状态</div>
+            <div class="value ok" id="hcStatus">检测中</div>
+        </div>
+        <div class="health-card">
+            <div class="label">运行时长</div>
+            <div class="value" id="hcUptime">-</div>
+        </div>
+        <div class="health-card">
+            <div class="label">今日请求</div>
+            <div class="value" id="hcReq">-</div>
+        </div>
+        <div class="health-card">
+            <div class="label">今日错误</div>
+            <div class="value" id="hcErr">-</div>
+        </div>
+        <div class="health-card">
+            <div class="label">数据库</div>
+            <div id="hcDb">-</div>
+        </div>
+        <div class="health-card">
+            <div class="label">最近备份</div>
+            <div class="value" id="hcBackup">-</div>
+        </div>
+    </div>
+
+    <!-- 请求日志 -->
+    <div class="log-panel">
+        <div class="panel-head">
+            <span>请求日志（logs/app.log）</span>
+            <button class="refresh-btn" id="refreshAccess">刷新</button>
+        </div>
+        <pre id="accessLog"><div class="empty-tip">加载中…</div></pre>
+    </div>
+
+    <!-- 错误日志 -->
+    <div class="log-panel">
+        <div class="panel-head">
+            <span>错误日志（logs/error.log）</span>
+            <button class="refresh-btn" id="refreshError">刷新</button>
+        </div>
+        <pre id="errorLog"><div class="empty-tip">加载中…</div></pre>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/request.js') }}"></script>
+<script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
+<script>
+(function () {
+    var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+    function esc(s) { return String(s || '').replace(/[&<>]/g, function (c) { return ESC[c]; }); }
+
+    function fmtUptime(sec) {
+        var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+        if (h > 24) { var d = Math.floor(h / 24); h = h % 24; return d + '天' + h + '小时'; }
+        return h + '小时' + m + '分';
+    }
+
+    async function loadHealth() {
+        try {
+            var h = await request.get('/api/health');
+            document.getElementById('hcStatus').textContent = '运行中';
+            document.getElementById('hcStatus').className = 'value ok';
+            document.getElementById('hcUptime').textContent = fmtUptime(h.uptime_seconds);
+            document.getElementById('hcReq').textContent = h.requests_today + ' 次';
+            document.getElementById('hcErr').textContent = h.errors_today + ' 次';
+            // 数据库状态
+            var dbHtml = '';
+            Object.keys(h.db_status || {}).forEach(function (name) {
+                var ok = h.db_status[name];
+                dbHtml += '<span class="db-chip ' + (ok ? 'ok' : 'bad') + '">' + esc(name) + (ok ? ' ✓' : ' ✗') + '</span>';
+            });
+            document.getElementById('hcDb').innerHTML = dbHtml;
+            // 备份
+            var bk = h.backup;
+            if (bk && bk.available) {
+                document.getElementById('hcBackup').textContent = bk.latest + '（' + bk.file_count + '个库）';
+                document.getElementById('hcBackup').className = 'value ok';
+            } else {
+                document.getElementById('hcBackup').textContent = '无备份';
+                document.getElementById('hcBackup').className = 'value bad';
+            }
+        } catch (e) {
+            document.getElementById('hcStatus').textContent = '获取失败';
+            document.getElementById('hcStatus').className = 'value bad';
+        }
+    }
+
+    async function loadLogs() {
+        try {
+            var a = await request.get('/api/logs/access?limit=200');
+            var al = document.getElementById('accessLog');
+            al.innerHTML = a.lines.length ? esc(a.lines.join('\n')) : '<div class="empty-tip">暂无请求日志</div>';
+        } catch (e) { document.getElementById('accessLog').textContent = '加载失败：' + e.message; }
+        try {
+            var er = await request.get('/api/logs/error?limit=100');
+            var el = document.getElementById('errorLog');
+            el.innerHTML = er.lines.length ? esc(er.lines.join('\n')) : '<div class="empty-tip">暂无错误日志 🎉</div>';
+        } catch (e) { document.getElementById('errorLog').textContent = '加载失败：' + e.message; }
+    }
+
+    document.getElementById('refreshAccess').addEventListener('click', loadLogs);
+    document.getElementById('refreshError').addEventListener('click', loadLogs);
+    loadHealth();
+    loadLogs();
+    // 每 15 秒自动刷新
+    setInterval(function () { loadHealth(); loadLogs(); }, 15000);
+})();
+</script>
+</body>
+</html>

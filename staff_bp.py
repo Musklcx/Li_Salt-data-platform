@@ -11,4 +11,6 @@ staff_bp = Blueprint('staff', __name__)
 
 @staff_bp.route('/staff')
 def page_staff():
+    
+    """人员概况页面"""
     return render_template("staff.html")

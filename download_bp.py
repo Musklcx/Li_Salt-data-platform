@@ -11,4 +11,6 @@ download_bp = Blueprint('download', __name__)
 
 @download_bp.route('/download')
 def page_download():
+    
+    """下载专区页面"""
     return render_template("download.html")

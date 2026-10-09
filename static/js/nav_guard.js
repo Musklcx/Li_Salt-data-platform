@@ -1,6 +1,6 @@
-/* 导航角色守卫：非管理员访问「期末金属量」时置灰菜单并弹窗提示，不跳转 */
+/* 导航角色守卫：非管理员访问「期末金属量 / 运行日志」时置灰菜单并弹窗提示，不跳转 */
 (function () {
-  var links = document.querySelectorAll('a[href="/inventory"]');
+  var links = document.querySelectorAll('a[href="/inventory"], a[href="/logs"]');
   if (!links.length) return;
 
   request.get('/api/me')

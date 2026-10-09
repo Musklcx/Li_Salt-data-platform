@@ -44,11 +44,15 @@ def parse_raw_date(s):
 
 @data_bp.route('/data')
 def page_data():
+    
+    """数据对比页面"""
     return render_template("data.html")
 
 
 @data_bp.route("/api/output/all")
 def api_all():
+    
+    """日聚合数据（按指标返回全部日记录）"""
     return ok(get_all_rows())
 
 

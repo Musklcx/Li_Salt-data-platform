@@ -25,11 +25,15 @@ TARGET_H = 800
 
 @saferisks_bp.route('/saferisks')
 def page_saferisks():
+    
+    """安全隐患整改页面"""
     return render_template("saferisks.html")
 
 
 @saferisks_bp.route('/api/risk/list')
 def risk_list():
+    
+    """整改台账列表"""
     rows = query("SELECT ID,问题隐患,整改措施,隐患排查时间,要求整改时间,整改完成时间,备注,imgBefore,imgAfter FROM safeRisks;")
     res_list = []
     for row in rows:
@@ -49,6 +53,8 @@ def risk_list():
 
 @saferisks_bp.route('/api/risk/update_remark', methods=["POST"])
 def risk_update_remark():
+    
+    """更新整改备注"""
     data = request.get_json()
     execute("UPDATE safeRisks SET 备注=? WHERE ID=?", (data["remark"], data["id"]))
     return ok(msg="备注保存成功")
@@ -56,6 +62,8 @@ def risk_update_remark():
 
 @saferisks_bp.route('/api/risk/update_finish_time', methods=["POST"])
 def risk_update_finish_time():
+    
+    """更新整改完成时间"""
     data = request.get_json()
     execute("UPDATE safeRisks SET 整改完成时间=? WHERE ID=?", (data["finishTime"], data["id"]))
     return ok(msg="整改完成时间保存成功")
@@ -63,6 +71,8 @@ def risk_update_finish_time():
 
 @saferisks_bp.route('/api/risk/upload_img', methods=["POST"])
 def risk_upload_img():
+    
+    """上传整改图片"""
     if "file" not in request.files:
         return fail("没有收到文件")
     file = request.files["file"]
@@ -99,6 +109,8 @@ def risk_upload_img():
 
 @saferisks_bp.route('/api/risk/update_img', methods=["POST"])
 def risk_update_img():
+    
+    """更新整改图片"""
     data = request.get_json()
     row_id = data["id"]
     field = data["field"]
@@ -111,6 +123,8 @@ def risk_update_img():
 
 @saferisks_bp.route('/api/risk/delete_img', methods=["POST"])
 def risk_delete_img():
+    
+    """删除整改图片"""
     data = request.get_json()
     row_id = data["id"]
     field = data["field"]
