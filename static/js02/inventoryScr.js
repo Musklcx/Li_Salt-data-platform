@@ -270,11 +270,11 @@ createApp({
     }
 
     onMounted(() => {
-      cSankey = echarts.init(document.getElementById('ch-sankey'));
-      cDonut = echarts.init(document.getElementById('ch-donut'));
-      cWater = echarts.init(document.getElementById('ch-waterfall'));
-      cTop = echarts.init(document.getElementById('ch-top'));
-      cSource = echarts.init(document.getElementById('ch-source'));
+      cSankey = initChart(document.getElementById('ch-sankey'));
+      cDonut = initChart(document.getElementById('ch-donut'));
+      cWater = initChart(document.getElementById('ch-waterfall'));
+      cTop = initChart(document.getElementById('ch-top'));
+      cSource = initChart(document.getElementById('ch-source'));
       window.addEventListener('resize', () => [cSankey, cDonut, cWater, cTop, cSource].forEach(c => c.resize()));
       load();
     });

@@ -1,0 +1,190 @@
+/* ============================================================
+   ui-unify.css — 表格 / 弹窗 统一视觉
+   覆盖范围：
+     1) 原生表格（data / notice 页的 bootstrap .table）
+     2) element 表格（hazard / saferisks 的 element-ui、inventory 的 element-plus）
+     3) element 弹窗 / 提示（message-box、dialog、message toast）
+   原则：只覆盖外观，不改任何结构；全部 !important 保证优先级。
+   ============================================================ */
+
+/* ---------- 1. 原生表格（data / notice） ---------- */
+.table thead th,
+.table thead td,
+.table th {
+    background: #205493 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #1a4275 !important;
+}
+
+.table thead th .cell,
+.table thead td .cell {
+    color: #ffffff !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background: #f7f9fc !important;
+}
+
+.table tbody tr:hover {
+    background: #eef3fb !important;
+}
+
+.table td,
+.table th {
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    border-color: #e4e3dd !important;
+    vertical-align: middle !important;
+}
+
+/* 表格外层滚动容器统一圆角与边框 */
+.table-wrap table {
+    border: 1px solid #e4e3dd !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+}
+
+/* ---------- 2. element 表格（el-table，兼容 element-ui / element-plus） ---------- */
+.el-table th {
+    background: #205493 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #1a4275 !important;
+}
+
+.el-table th .cell {
+    color: #ffffff !important;
+    font-size: 13px !important;
+}
+
+.el-table td {
+    font-size: 13px !important;
+    border-bottom: 1px solid #e9edf3 !important;
+}
+
+.el-table td .cell {
+    line-height: 1.6 !important;
+}
+
+/* 斑马纹：奇偶行浅灰区分 */
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+    background: #f7f9fc !important;
+}
+
+/* 行悬停：浅蓝高亮 */
+.el-table .el-table__body tr:hover > td {
+    background: #eef3fb !important;
+}
+
+/* 表格外框统一圆角 */
+.el-table {
+    border-radius: 6px !important;
+    overflow: hidden !important;
+}
+
+/* 无数据提示行颜色跟随 */
+.el-table__empty-text {
+    font-size: 13px !important;
+    color: #999999 !important;
+}
+
+/* ---------- 3. element 弹窗（dialog / message-box，兼容两代 element） ---------- */
+.el-dialog,
+.el-message-box {
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+
+/* 标题栏：深蓝底白字 */
+.el-dialog__header,
+.el-message-box__header {
+    background: #205493 !important;
+    padding: 14px 20px !important;
+    margin: 0 !important;
+}
+
+.el-dialog__title,
+.el-message-box__title {
+    color: #ffffff !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+}
+
+/* 关闭按钮白色 */
+.el-dialog__headerbtn,
+.el-message-box__headerbtn {
+    color: #ffffff !important;
+}
+
+.el-dialog__headerbtn .el-dialog__close,
+.el-message-box__headerbtn .el-message-box__close,
+.el-dialog__close,
+.el-message-box__close {
+    color: #ffffff !important;
+    font-size: 16px !important;
+}
+
+.el-dialog__headerbtn:hover .el-dialog__close,
+.el-message-box__headerbtn:hover .el-message-box__close {
+    color: #f0f0f0 !important;
+}
+
+/* 弹窗正文 */
+.el-dialog__body,
+.el-message-box__content {
+    font-size: 14px !important;
+    color: #333333 !important;
+    padding: 20px !important;
+}
+
+.el-message-box__message {
+    font-size: 14px !important;
+    color: #333333 !important;
+    line-height: 1.7 !important;
+}
+
+/* 弹窗按钮：确定深蓝、取消灰 */
+.el-button--primary {
+    background: #205493 !important;
+    border-color: #205493 !important;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+    background: #1a4275 !important;
+    border-color: #1a4275 !important;
+}
+
+.el-button--primary.is-disabled {
+    background: #7d9bc4 !important;
+    border-color: #7d9bc4 !important;
+}
+
+.el-button {
+    border-radius: 4px !important;
+}
+
+/* ---------- 4. element 轻提示 toast ---------- */
+.el-message {
+    border-radius: 6px !important;
+    font-size: 14px !important;
+}
+
+.el-message .el-message__content {
+    font-size: 14px !important;
+}
+
+/* ---------- 5. 弹窗内的输入框 / 标签统一样式 ---------- */
+.el-dialog .el-input__inner,
+.el-message-box .el-input__inner {
+    border-radius: 4px !important;
+    font-size: 14px !important;
+}
+
+.el-dialog__body .el-form-item__label,
+.el-message-box__content .el-form-item__label {
+    font-size: 14px !important;
+    color: #333333 !important;
+}

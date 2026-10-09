@@ -409,7 +409,7 @@ function render() {
 
 //页面初始化
 window.addEventListener('DOMContentLoaded', ()=>{
-    window.myChart = echarts.init(document.getElementById("chart"));
+    window.myChart = initChart(document.getElementById("chart"));
 
     document.getElementById("btnDay").onclick = () => {
         granularity = "day";
