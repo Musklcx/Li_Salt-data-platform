@@ -2,18 +2,20 @@
  * 功能：
  *   1. 自动携带登录凭证（same-origin Cookie，兼容现有 HttpOnly token Cookie 方案）
  *   2. JS 对象自动 JSON 序列化 + 设置 Content-Type
- *   3. 统一错误处理：非 2xx 抛 Error（消息取自后端 msg / error 字段）
+ *   3. 统一响应解包：后端统一返回 {code, msg, data}
+ *      成功(code===0) → 直接返回 data；失败/非2xx → 抛 Error(msg)
  *   4. FormData 文件上传自动识别（不手动设 Content-Type，浏览器自动带 boundary）
  *
- * 用法：
- *   const data = await request('/api/state?month=2026-08');   // GET
+ * 用法（调用方拿到的就是 data，不再需要判断 code/ok）：
+ *   const rows = await request('/api/state?month=2026-08');  // GET，rows 即 data
  *   const data = await request.get('/api/state?month=2026-08');
- *   await request.post('/api/rows', { equip_no: 'A01' });     // POST JSON
- *   await request.put('/api/rows/1', { volume: 3.14 });       // PUT JSON
- *   await request.del('/api/rows/1');                          // DELETE
- *   await request.upload('/api/import', formData);             // POST 文件上传
+ *   const r = await request.post('/api/rows', {...});        // 成功返回 data
+ *   await request.put('/api/rows/1', { volume: 3.14 });
+ *   await request.del('/api/rows/1');
+ *   const up = await request.upload('/api/import', formData);
  *
- * 返回：解析后的 JSON 对象（原样返回后端 data 内容）
+ * 错误处理：业务失败(code!==0)或 HTTP 非 2xx 都会抛 Error，
+ * 调用方用 try/catch 捕获，err.message 即后端 msg。
  */
 (function (window) {
   'use strict';
@@ -38,9 +40,18 @@
     try { data = await resp.json(); } catch (e) { /* 非 JSON 响应（如文件下载） */ }
 
     if (!resp.ok) {
+      // HTTP 错误（401/403/400/500 等），消息取后端 msg
       var msg = (data && (data.msg || data.error)) || ('请求失败（HTTP ' + resp.status + '）');
       throw new Error(msg);
     }
+    // 统一解包：标准格式 {code, msg, data}
+    if (data && typeof data === 'object' && 'code' in data) {
+      if (data.code !== 0) {
+        throw new Error(data.msg || '操作失败');
+      }
+      return data.data;
+    }
+    // 兼容历史裸数据（后端统一后一般不会走到这里）
     return data;
   }
 

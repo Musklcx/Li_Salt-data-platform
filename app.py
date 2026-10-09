@@ -81,12 +81,12 @@ def require_login():
         # 管理员专属路径：非 admin 页面显示 403 提示页，接口返回 403 JSON
         if path.startswith(ADMIN_ONLY_PREFIXES) and role != 'admin':
             if path.startswith('/api/'):
-                return jsonify(code=403, msg='无权限访问'), 403
+                return jsonify(code=403, msg='无权限访问', data=None), 403
             return render_template('no_permission.html', email=email, role=role), 403
         return None
     # 未登录：API 返回 401 JSON，页面 302 跳回登录页
     if path.startswith('/api/'):
-        return jsonify(code=401, msg='未登录或登录已过期'), 401
+        return jsonify(code=401, msg='未登录或登录已过期', data=None), 401
     return redirect('/login')
 
 

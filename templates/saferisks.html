@@ -248,17 +248,14 @@
             const formData = new FormData();
             formData.append("file", file);
             formData.append("row_id", this.uploadRow.id);
+            // request.js 已解包：成功返回 data={url}，失败抛 Error
             const ret = await request.upload("/api/risk/upload_img", formData);
-            if(ret.code === 0){
-              await request.post("/api/risk/update_img", { id: this.uploadRow.id, field: this.uploadField, url: ret.url });
-              this.uploadRow[this.uploadField] = ret.url;
-              this.$message.success("上传成功");
-            }else{
-              this.$message.error(ret.msg || "上传失败");
-            }
+            await request.post("/api/risk/update_img", { id: this.uploadRow.id, field: this.uploadField, url: ret.url });
+            this.uploadRow[this.uploadField] = ret.url;
+            this.$message.success("上传成功");
           }catch(err){
             console.error("上传异常", err);
-            this.$message.error("上传失败");
+            this.$message.error(err.message || "上传失败");
           }
         },
         async deleteImg(row, field){

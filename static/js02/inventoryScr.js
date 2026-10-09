@@ -134,16 +134,17 @@ createApp({
     function triggerImport() { fileInput.value.click(); }
 
     async function addPeriod() {
-      const r = await request.post('/api/periods', newPeriod);
-      if (r.ok) {
+      try {
+        // 成功返回 data={months}；失败抛 Error（msg 即后端提示）
+        const r = await request.post('/api/periods', newPeriod);
         months.value = r.months;
         month.value = newPeriod.month;
         showNewPeriod.value = false;
         newPeriod.month = newPeriod.start_date = newPeriod.end_date = '';
         ElementPlus.ElMessage.success('已新增，可切换并导入盘点表');
         load(month.value);
-      } else {
-        ElementPlus.ElMessage.error(r.error || '创建失败');
+      } catch (err) {
+        ElementPlus.ElMessage.error(err.message || '创建失败');
       }
     }
 
@@ -156,12 +157,12 @@ createApp({
       const { value } = await ElementPlus.ElMessageBox.prompt('请输入编辑密码', '解锁编辑', {
         confirmButtonText: '确定', cancelButtonText: '取消', inputType: 'password',
       });
-      const r = await request.post('/api/unlock', { password: value });
-      if (r.ok) {
+      try {
+        await request.post('/api/unlock', { password: value });
         unlocked.value = true;
         ElementPlus.ElMessage.success('已解锁，可以编辑数据');
-      } else {
-        ElementPlus.ElMessage.error('密码错误');
+      } catch (err) {
+        ElementPlus.ElMessage.error(err.message || '密码错误');
       }
     }
     async function onImport(e) {

@@ -270,15 +270,15 @@
             const { value } = await this.$prompt('请输入编辑密码', '解锁编辑', {
               confirmButtonText: '确定', cancelButtonText: '取消', inputType: 'password'
             });
-            const ret = await request.post("/api/hazard/unlock", {password: value});
-            if(ret.ok){
-              this.unlocked = true;
-              this.$message.success('已解锁，可以编辑数据');
-            }else{
-              this.$message.error('密码错误');
-            }
+            // request.js 已解包：密码错误抛 Error('密码错误')，走 catch
+            await request.post("/api/hazard/unlock", {password: value});
+            this.unlocked = true;
+            this.$message.success('已解锁，可以编辑数据');
           }catch(err){
-            // 用户取消输入
+            // 用户取消输入时 err === 'cancel'，不提示；其余为真实错误
+            if (err && err !== 'cancel') {
+              this.$message.error(err.message || '密码错误');
+            }
           }
         },
         async saveEdit(){
@@ -287,15 +287,14 @@
             return;
           }
           try{
-            const ret = await request.post("/api/hazard/update", {
+            // request.js 已解包：失败抛 Error，成功直接继续
+            await request.post("/api/hazard/update", {
               id: this.currentRow.id,
               measures: this.editForm.measures,
               done: this.editForm.done
             })
-            if(ret.code === 0){
-              this.showDetails = false;
-              this.loadDbData();
-            }
+            this.showDetails = false;
+            this.loadDbData();
           }catch(err){
             console.error("保存失败", err);
             alert("保存失败，请检查后端接口");

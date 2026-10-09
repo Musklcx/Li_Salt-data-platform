@@ -26,12 +26,11 @@ new Vue({
     async editClosedEvent({ row, column }) {
       const field = column.property;
       try {
+        // request.js 已统一解包：失败会抛 Error，成功直接返回 data，无需判断 code
         if(field === "remark"){
-          const ret = await request.post("/api/risk/update_remark", { id: row.id, remark: row.remark })
-          if(ret.code !== 0) alert("备注保存失败");
+          await request.post("/api/risk/update_remark", { id: row.id, remark: row.remark })
         } else if(field === "finishTime"){
-          const ret = await request.post("/api/risk/update_finish_time", { id: row.id, finishTime: row.finishTime })
-          if(ret.code !== 0) alert("整改完成时间保存失败");
+          await request.post("/api/risk/update_finish_time", { id: row.id, finishTime: row.finishTime })
         }
       } catch(err) {
         console.error("保存异常", err);
@@ -61,16 +60,13 @@ new Vue({
         const formData = new FormData();
         formData.append("file", file);
         formData.append("row_id", this.uploadRow.id);
+        // 成功返回 data = {url}；失败抛 Error（msg 即后端提示）
         const ret = await request.upload("/api/risk/upload_img", formData);
-        if(ret.code === 0){
-          await this.updateImgField(this.uploadRow.id, this.uploadField, ret.url);
-          this.uploadRow[this.uploadField] = ret.url;
-        }else{
-          alert(ret.msg || "上传失败");
-        }
+        await this.updateImgField(this.uploadRow.id, this.uploadField, ret.url);
+        this.uploadRow[this.uploadField] = ret.url;
       }catch(err){
         console.error("上传异常", err);
-        alert("上传失败，请检查后端服务");
+        alert(err.message || "上传失败，请检查后端服务");
       }
     },
     async updateImgField(id, field, url){

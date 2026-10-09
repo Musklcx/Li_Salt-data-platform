@@ -9,9 +9,10 @@
 """
 from datetime import datetime
 from io import BytesIO
-from flask import Blueprint, jsonify, request, render_template, send_file
+from flask import Blueprint, request, render_template, send_file
 from openpyxl import Workbook
 from db import query, fetchone
+from resp import ok
 
 data_bp = Blueprint('data', __name__)
 
@@ -48,7 +49,7 @@ def page_data():
 
 @data_bp.route("/api/output/all")
 def api_all():
-    return jsonify(get_all_rows())
+    return ok(get_all_rows())
 
 
 def get_all_rows():
@@ -200,8 +201,8 @@ def api_plan_get():
 
     row = fetchone("SELECT 碳酸锂,硫酸钠 FROM month_plan WHERE 月份 = ?", [db_month_text])
     if row is None:
-        return jsonify({"碳酸锂": 0, "硫酸钠": 0})
-    return jsonify({
+        return ok({"碳酸锂": 0, "硫酸钠": 0})
+    return ok({
         "碳酸锂": float(row["碳酸锂"]),
         "硫酸钠": float(row["硫酸钠"])
     })

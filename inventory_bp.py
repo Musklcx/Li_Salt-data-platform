@@ -10,8 +10,9 @@
 import os
 import sqlite3
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, g
+from flask import Blueprint, render_template, request, g
 import openpyxl
+from resp import ok, fail
 
 inventory_bp = Blueprint('inventory', __name__)
 
@@ -140,10 +141,14 @@ def _import_inventory_xlsx(db, path, period):
 
 
 # ---------- 聚合 ----------
+def _date_parts(v):
+    """把日期串拆成 [年,月,日]，兼容 2026/7/31 与 2026-07-31 两种格式"""
+    s = str(v).strip().replace('-', '/')
+    return [int(p) for p in s.split('/') if p != '']
+
+
 def _date_le(a, b):
-    pa = [int(x) for x in str(a).split('/')]
-    pb = [int(x) for x in str(b).split('/')]
-    return pa <= pb
+    return _date_parts(a) <= _date_parts(b)
 
 
 def _get_period_range(db, month):
@@ -260,7 +265,7 @@ def api_state():
     denom = inv['opening'] + bal['input_metal'] - inv['ending']
     yield_rate = (total_sold / denom) if denom > 0 else 0
     balance_diff = inv['opening'] + bal['input_metal'] - inv['ending'] - total_sold - inv['loss']
-    return jsonify({
+    return ok({
         'month': month,
         'months': list_months(db),
         'db_balance': bal,
@@ -294,7 +299,7 @@ def api_add_row():
          d.get('radius'), d.get('height'), d.get('volume'), d.get('concentration'),
          d.get('metal'), 9999, period, 1 if in_ending else 0))
     db.commit()
-    return jsonify({'id': cur.lastrowid})
+    return ok({'id': cur.lastrowid})
 
 
 @inventory_bp.route('/api/rows/<int:rid>', methods=['PUT'])
@@ -307,7 +312,7 @@ def api_update_row(rid):
          d.get('radius'), d.get('height'), d.get('volume'), d.get('concentration'),
          d.get('metal'), 1 if d.get('in_ending') else 0, rid))
     db.commit()
-    return jsonify({'ok': True})
+    return ok()
 
 
 @inventory_bp.route('/api/rows/<int:rid>', methods=['DELETE'])
@@ -315,15 +320,15 @@ def api_delete_row(rid):
     db = get_db()
     db.execute('DELETE FROM inventory WHERE id=?', (rid,))
     db.commit()
-    return jsonify({'ok': True})
+    return ok()
 
 
 @inventory_bp.route('/api/unlock', methods=['POST'])
 def api_unlock():
     d = request.get_json(force=True) or {}
     if d.get('password') == EDIT_PASSWORD:
-        return jsonify({'ok': True})
-    return jsonify({'ok': False, 'error': '密码错误'}), 403
+        return ok()
+    return fail('密码错误', http=403)
 
 
 @inventory_bp.route('/api/periods', methods=['GET', 'POST'])
@@ -331,26 +336,26 @@ def api_periods():
     db = get_db()
     if request.method == 'GET':
         rows = db.execute('SELECT month, start_date, end_date FROM periods ORDER BY month').fetchall()
-        return jsonify([dict(r) for r in rows])
+        return ok([dict(r) for r in rows])
     d = request.get_json(force=True) or {}
     month = (d.get('month') or '').strip()
     start = (d.get('start_date') or '').strip()
     end = (d.get('end_date') or '').strip()
     if not month or not start or not end:
-        return jsonify({'ok': False, 'error': '月份/开始/结束日期都要填'}), 400
+        return fail('月份/开始/结束日期都要填')
     exists = db.execute('SELECT 1 FROM periods WHERE month=?', (month,)).fetchone()
     if exists:
-        return jsonify({'ok': False, 'error': '该月份已存在'}), 400
+        return fail('该月份已存在')
     db.execute('INSERT INTO periods (month, start_date, end_date) VALUES (?,?,?)', (month, start, end))
     db.commit()
-    return jsonify({'ok': True, 'months': list_months(db)})
+    return ok({'months': list_months(db)})
 
 
 @inventory_bp.route('/api/import', methods=['POST'])
 def api_import():
     f = request.files.get('file')
     if not f:
-        return jsonify({'error': 'no file'}), 400
+        return fail('no file')
     period = request.form.get('period') or DEFAULT_MONTH
     tmp = os.path.join(BASE_DIR, 'data', '_upload_tmp.xlsx')
     f.save(tmp)
@@ -360,4 +365,4 @@ def api_import():
         os.remove(tmp)
     except OSError:
         pass
-    return jsonify({'imported': n, 'period': period})
+    return ok({'imported': n, 'period': period})

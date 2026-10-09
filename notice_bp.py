@@ -6,8 +6,9 @@
 - 接口：/api/notice/list（明细表格）、/api/notice/sum（班组汇总卡片）
 数据访问统一走 db.py（主库 db_day.db）
 """
-from flask import Blueprint, jsonify, request, render_template
+from flask import Blueprint, request, render_template
 from db import query
+from resp import ok
 
 notice_bp = Blueprint('notice', __name__)
 
@@ -56,7 +57,7 @@ def api_notice_list():
     if banzu != "全部":
         sql_base += " AND 班组 = ? "
         params.append(banzu)
-    return jsonify(query(sql_base, params))
+    return ok(query(sql_base, params))
 
 
 @notice_bp.route("/api/notice/sum")
@@ -85,4 +86,4 @@ def api_notice_sum():
         if bz in out:
             out[bz]["sum_li"] = float(r["sum_li"] or 0)
             out[bz]["sum_na"] = float(r["sum_na"] or 0)
-    return jsonify(out)
+    return ok(out)

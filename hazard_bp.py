@@ -7,8 +7,9 @@
 数据访问统一走 db.py（主库 db_day.db）
 """
 import os
-from flask import Blueprint, jsonify, request, render_template
+from flask import Blueprint, request, render_template
 from db import query, execute
+from resp import ok, fail
 
 hazard_bp = Blueprint('hazard', __name__)
 
@@ -43,7 +44,7 @@ def hazard_list():
             "done": row["是否完成"],
             "imgUrl": img_url
         })
-    return jsonify(res_list)
+    return ok(res_list)
 
 
 @hazard_bp.route("/api/hazard/update", methods=["POST"])
@@ -56,12 +57,12 @@ def hazard_update():
         "UPDATE question_table SET `处理措施`=?, `是否完成`=? WHERE ID=?",
         (measures, done, row_id)
     )
-    return jsonify({"code": 0, "msg": "保存成功"})
+    return ok(msg="保存成功")
 
 
 @hazard_bp.route("/api/hazard/unlock", methods=["POST"])
 def hazard_unlock():
     data = request.get_json(force=True) or {}
     if data.get("password") == HAZARD_EDIT_PASSWORD:
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": "密码错误"}), 403
+        return ok()
+    return fail("密码错误", http=403)

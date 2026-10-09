@@ -7,9 +7,10 @@
 数据访问统一走 db.py（主库 db_day.db）；图片上传保存到 static/assets/img/upload
 """
 import os
-from flask import Blueprint, jsonify, request, render_template
+from flask import Blueprint, request, render_template
 from PIL import Image
 from db import query, execute
+from resp import ok, fail
 
 saferisks_bp = Blueprint('saferisks', __name__)
 
@@ -43,36 +44,36 @@ def risk_list():
             "imgBefore": row["imgBefore"] or "",
             "imgAfter": row["imgAfter"] or ""
         })
-    return jsonify(res_list)
+    return ok(res_list)
 
 
 @saferisks_bp.route('/api/risk/update_remark', methods=["POST"])
 def risk_update_remark():
     data = request.get_json()
     execute("UPDATE safeRisks SET 备注=? WHERE ID=?", (data["remark"], data["id"]))
-    return jsonify({"code": 0, "msg": "备注保存成功"})
+    return ok(msg="备注保存成功")
 
 
 @saferisks_bp.route('/api/risk/update_finish_time', methods=["POST"])
 def risk_update_finish_time():
     data = request.get_json()
     execute("UPDATE safeRisks SET 整改完成时间=? WHERE ID=?", (data["finishTime"], data["id"]))
-    return jsonify({"code": 0, "msg": "整改完成时间保存成功"})
+    return ok(msg="整改完成时间保存成功")
 
 
 @saferisks_bp.route('/api/risk/upload_img', methods=["POST"])
 def risk_upload_img():
     if "file" not in request.files:
-        return jsonify({"code": 1, "msg": "没有收到文件"})
+        return fail("没有收到文件")
     file = request.files["file"]
     if file.filename == "":
-        return jsonify({"code": 1, "msg": "文件名为空"})
+        return fail("文件名为空")
     row_id = request.form.get("row_id", "")
     if not row_id:
-        return jsonify({"code": 1, "msg": "缺少行ID"})
+        return fail("缺少行ID")
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in ALLOWED_EXT:
-        return jsonify({"code": 1, "msg": "只支持 png/jpg/jpeg/gif/bmp/webp 格式"})
+        return fail("只支持 png/jpg/jpeg/gif/bmp/webp 格式")
     img = Image.open(file.stream)
     img_ratio = img.width / img.height
     target_ratio = TARGET_W / TARGET_H
@@ -93,7 +94,7 @@ def risk_upload_img():
     save_path = os.path.join(UPLOAD_FOLDER, save_name)
     img.convert("RGB").save(save_path, quality=85)
     img_url = f"/static/assets/img/upload/{save_name}"
-    return jsonify({"code": 0, "msg": "上传成功", "url": img_url})
+    return ok(msg="上传成功", data={"url": img_url})
 
 
 @saferisks_bp.route('/api/risk/update_img', methods=["POST"])
@@ -103,9 +104,9 @@ def risk_update_img():
     field = data["field"]
     img_url = data["url"]
     if field not in ("imgAfter",):
-        return jsonify({"code": 1, "msg": "字段不合法"})
+        return fail("字段不合法")
     execute(f"UPDATE safeRisks SET {field}=? WHERE ID=?", (img_url, row_id))
-    return jsonify({"code": 0, "msg": "保存成功"})
+    return ok(msg="保存成功")
 
 
 @saferisks_bp.route('/api/risk/delete_img', methods=["POST"])
@@ -123,4 +124,4 @@ def risk_delete_img():
             except Exception as e:
                 print("删除文件失败:", e)
     execute(f"UPDATE safeRisks SET {field}=? WHERE ID=?", ("", row_id))
-    return jsonify({"code": 0, "msg": "删除成功"})
+    return ok(msg="删除成功")

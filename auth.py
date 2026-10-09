@@ -169,14 +169,14 @@ def login_required(view):
     def wrapper(*args, **kwargs):
         token = _extract_token()
         if not token:
-            return jsonify(code=401, msg='未登录或缺少凭证'), 401
+            return jsonify(code=401, msg='未登录或缺少凭证', data=None), 401
         try:
             payload = jwt.decode(token, auth_config('SECRET_KEY'),
                                  algorithms=[auth_config('JWT_ALGORITHM', 'HS256')])
         except jwt.ExpiredSignatureError:
-            return jsonify(code=401, msg='登录已过期，请重新登录'), 401
+            return jsonify(code=401, msg='登录已过期，请重新登录', data=None), 401
         except jwt.InvalidTokenError:
-            return jsonify(code=401, msg='凭证无效'), 401
+            return jsonify(code=401, msg='凭证无效', data=None), 401
         g.user_id = int(payload['sub'])
         g.email = payload['email']
         return view(*args, **kwargs)
@@ -195,12 +195,12 @@ def send_code():
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
     if not EMAIL_RE.match(email):
-        return jsonify(code=400, msg='邮箱格式不正确'), 400
+        return jsonify(code=400, msg='邮箱格式不正确', data=None), 400
 
     db = get_db()
     exists = db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
     if exists:
-        return jsonify(code=409, msg='该邮箱已被注册'), 409
+        return jsonify(code=409, msg='该邮箱已被注册', data=None), 409
 
     now = datetime.datetime.utcnow()
     recent = db.execute(
@@ -210,7 +210,7 @@ def send_code():
     if recent is not None:
         last_at = datetime.datetime.fromisoformat(recent['created_at'])
         if (now - last_at).total_seconds() < auth_config('VERIFY_CODE_RESEND', 60):
-            return jsonify(code=429, msg='发送太频繁，请 60 秒后再试'), 429
+            return jsonify(code=429, msg='发送太频繁，请 60 秒后再试', data=None), 429
 
     code = generate_code()
     expires_at = (now + datetime.timedelta(seconds=auth_config('VERIFY_CODE_TTL', 600))).isoformat()
@@ -227,8 +227,8 @@ def send_code():
             (email, code)
         )
         db.commit()
-        return jsonify(code=500, msg='验证码发送失败，请稍后重试或联系管理员'), 500
-    return jsonify(code=0, msg='验证码已发送，请查收邮件')
+        return jsonify(code=500, msg='验证码发送失败，请稍后重试或联系管理员', data=None), 500
+    return jsonify(code=0, msg='验证码已发送，请查收邮件', data=None)
 
 
 # ---- API：注册 ----
@@ -241,19 +241,19 @@ def register():
     code = (data.get('code') or '').strip()
 
     if not username:
-        return jsonify(code=400, msg='请输入用户名'), 400
+        return jsonify(code=400, msg='请输入用户名', data=None), 400
     if not EMAIL_RE.match(email):
-        return jsonify(code=400, msg='邮箱格式不正确'), 400
+        return jsonify(code=400, msg='邮箱格式不正确', data=None), 400
     if len(password) < 6:
-        return jsonify(code=400, msg='密码长度至少 6 位'), 400
+        return jsonify(code=400, msg='密码长度至少 6 位', data=None), 400
 
     db = get_db()
     exists = db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
     if exists:
-        return jsonify(code=409, msg='该邮箱已被注册'), 409
+        return jsonify(code=409, msg='该邮箱已被注册', data=None), 409
 
     if not code:
-        return jsonify(code=400, msg='请输入邮箱验证码'), 400
+        return jsonify(code=400, msg='请输入邮箱验证码', data=None), 400
     vrow = db.execute(
         'SELECT id, code, expires_at, used FROM verification_codes '
         'WHERE email = ? ORDER BY id DESC LIMIT 1',
@@ -261,9 +261,9 @@ def register():
     ).fetchone()
     now = datetime.datetime.utcnow()
     if vrow is None or vrow['used'] == 1 or vrow['code'] != code:
-        return jsonify(code=400, msg='验证码错误，请重新输入'), 400
+        return jsonify(code=400, msg='验证码错误，请重新输入', data=None), 400
     if datetime.datetime.fromisoformat(vrow['expires_at']) < now:
-        return jsonify(code=400, msg='验证码已过期，请重新获取'), 400
+        return jsonify(code=400, msg='验证码已过期，请重新获取', data=None), 400
     db.execute('UPDATE verification_codes SET used = 1 WHERE id = ?', (vrow['id'],))
 
     pw_hash = hash_password(password)
@@ -283,7 +283,7 @@ def login():
     password = data.get('password') or ''
 
     if not email or not password:
-        return jsonify(code=400, msg='请输入邮箱和密码'), 400
+        return jsonify(code=400, msg='请输入邮箱和密码', data=None), 400
 
     db = get_db()
     row = db.execute(
@@ -292,7 +292,7 @@ def login():
     ).fetchone()
 
     if row is None or not verify_password(password, row['password_hash']):
-        return jsonify(code=401, msg='邮箱或密码错误'), 401
+        return jsonify(code=401, msg='邮箱或密码错误', data=None), 401
 
     token = issue_token(row['id'], row['email'], row['role'])
     resp = jsonify(code=0, msg='登录成功', data={
@@ -316,7 +316,7 @@ def login():
 # ---- API：退出登录（清 Cookie）----
 @auth_bp.post('/api/logout')
 def logout():
-    resp = jsonify(code=0, msg='已退出登录')
+    resp = jsonify(code=0, msg='已退出登录', data=None)
     resp.delete_cookie('token', path='/')
     return resp
 
@@ -331,7 +331,7 @@ def me():
         (g.user_id,)
     ).fetchone()
     if row is None:
-        return jsonify(code=401, msg='用户不存在'), 401
+        return jsonify(code=401, msg='用户不存在', data=None), 401
     return jsonify(code=0, msg='ok', data={
         'id': row['id'],
         'username': row['username'],
