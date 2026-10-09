@@ -82,7 +82,7 @@ createApp({
     // ---- API ----
     async function load() {
       const q = month.value ? '?month=' + month.value : '';
-      const st = await (await fetch('/api/state' + q)).json();
+      const st = await request.get('/api/state' + q);
       months.value = st.months || [];
       rows.value = st.inventory || [];
       Object.assign(summary, st.summary || {});
@@ -92,13 +92,10 @@ createApp({
     }
 
     async function saveRow(row) {
-      await fetch('/api/rows/' + row.id, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          equip_no: row.equip_no, equip_name: row.equip_name, data_type: row.data_type,
-          radius: row.radius, height: row.height, volume: row.volume,
-          concentration: row.concentration, metal: row.metal, in_ending: row.in_ending
-        })
+      await request.put('/api/rows/' + row.id, {
+        equip_no: row.equip_no, equip_name: row.equip_name, data_type: row.data_type,
+        radius: row.radius, height: row.height, volume: row.volume,
+        concentration: row.concentration, metal: row.metal, in_ending: row.in_ending
       });
       // 保存后重新拉取汇总（KPI/图表/平衡条），不重渲染表格避免失焦
       await refreshSummary();
@@ -106,7 +103,7 @@ createApp({
 
     async function refreshSummary() {
       const q = month.value ? '?month=' + month.value : '';
-      const st = await (await fetch('/api/state' + q)).json();
+      const st = await request.get('/api/state' + q);
       Object.assign(summary, st.summary || {});
       Object.assign(dbBalance, st.db_balance || {});
       // 同步 in_ending 和 metal 到本地行（避免后端重算覆盖前端值）
@@ -120,10 +117,7 @@ createApp({
     }
 
     async function addRow() {
-      await fetch('/api/rows', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ equip_no: '', equip_name: '新设备', data_type: '输入高度', radius: 2, height: 0, concentration: 0, period: month.value })
-      });
+      await request.post('/api/rows', { equip_no: '', equip_name: '新设备', data_type: '输入高度', radius: 2, height: 0, concentration: 0, period: month.value });
       await load();
       // 滚到表格底部，让新行可见
       await nextTick();
@@ -133,17 +127,14 @@ createApp({
 
     async function delRow(row) {
       if (!confirm('删除该行？')) return;
-      await fetch('/api/rows/' + row.id, { method: 'DELETE' });
+      await request.del('/api/rows/' + row.id);
       load();
     }
 
     function triggerImport() { fileInput.value.click(); }
 
     async function addPeriod() {
-      const r = await (await fetch('/api/periods', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPeriod)
-      })).json();
+      const r = await request.post('/api/periods', newPeriod);
       if (r.ok) {
         months.value = r.months;
         month.value = newPeriod.month;
@@ -165,10 +156,7 @@ createApp({
       const { value } = await ElementPlus.ElMessageBox.prompt('请输入编辑密码', '解锁编辑', {
         confirmButtonText: '确定', cancelButtonText: '取消', inputType: 'password',
       });
-      const r = await (await fetch('/api/unlock', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: value })
-      })).json();
+      const r = await request.post('/api/unlock', { password: value });
       if (r.ok) {
         unlocked.value = true;
         ElementPlus.ElMessage.success('已解锁，可以编辑数据');
@@ -181,7 +169,7 @@ createApp({
       if (!f) return;
       const fd = new FormData();
       fd.append('file', f); fd.append('period', month.value);
-      const r = await (await fetch('/api/import', { method: 'POST', body: fd })).json();
+      const r = await request.upload('/api/import', fd);
       ElementPlus.ElMessage.success('导入完成，共 ' + r.imported + ' 行');
       load();
     }

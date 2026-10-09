@@ -183,6 +183,7 @@
 
     <script src="{{ url_for('static', filename='lib/elementUI/vue.min.js') }}"></script>
     <script src="{{ url_for('static', filename='lib/elementUI/element-ui.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/request.js') }}"></script>
     <script>
     Vue.use(ELEMENT);
     new Vue({
@@ -202,20 +203,14 @@
       methods: {
         async loadDbData(){
           try{
-            const resp = await fetch("/api/risk/list");
-            const data = await resp.json();
-            this.tableData = data;
+            this.tableData = await request.get("/api/risk/list");
           }catch(err){
             console.error("数据库读取失败",err);
           }
         },
         async updateFinishTime(row){
           try{
-            await fetch("/api/risk/update_finish_time", {
-              method: "POST",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({ id: row.id, finishTime: row.finishTime })
-            })
+            await request.post("/api/risk/update_finish_time", { id: row.id, finishTime: row.finishTime })
           }catch(err){
             console.error("保存失败", err);
             this.$message.error("整改完成时间保存失败");
@@ -223,11 +218,7 @@
         },
         async updateRemark(row){
           try{
-            await fetch("/api/risk/update_remark", {
-              method: "POST",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({ id: row.id, remark: row.remark })
-            })
+            await request.post("/api/risk/update_remark", { id: row.id, remark: row.remark })
           }catch(err){
             console.error("保存失败", err);
             this.$message.error("备注保存失败");
@@ -256,17 +247,9 @@
             const formData = new FormData();
             formData.append("file", file);
             formData.append("row_id", this.uploadRow.id);
-            const resp = await fetch("/api/risk/upload_img", {
-              method: "POST",
-              body: formData
-            });
-            const ret = await resp.json();
+            const ret = await request.upload("/api/risk/upload_img", formData);
             if(ret.code === 0){
-              await fetch("/api/risk/update_img", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ id: this.uploadRow.id, field: this.uploadField, url: ret.url })
-              });
+              await request.post("/api/risk/update_img", { id: this.uploadRow.id, field: this.uploadField, url: ret.url });
               this.uploadRow[this.uploadField] = ret.url;
               this.$message.success("上传成功");
             }else{
@@ -284,11 +267,7 @@
               type: "warning"
           }).then(async () => {
             try{
-              await fetch("/api/risk/delete_img", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ id: row.id, field: field, url: row[field] })
-              });
+              await request.post("/api/risk/delete_img", { id: row.id, field: field, url: row[field] });
               row[field] = "";
               this.$message.success("删除成功");
             }catch(err){

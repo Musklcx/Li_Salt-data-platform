@@ -22,11 +22,11 @@ $(function(){
 
 async function loadNoticeData(month,banzu){
     // 1、读取月度计划
-    const planRes = await fetch(`/api/plan/get?month=${month}`).then(r=>r.json());
+    const planRes = await request.get(`/api/plan/get?month=${month}`);
     // 2、各班当月汇总产量
-    const sumRes = await fetch(`/api/notice/sum?month=${month}`).then(r=>r.json());
+    const sumRes = await request.get(`/api/notice/sum?month=${month}`);
     //3、明细表格
-    const listRes = await fetch(`/api/notice/list?month=${month}&banzu=${banzu}`).then(r=>r.json());
+    const listRes = await request.get(`/api/notice/list?month=${month}&banzu=${banzu}`);
 
     // 更新顶部标题
     $("#planTitle").html(`${month.replace("-","年")}月计划:`);

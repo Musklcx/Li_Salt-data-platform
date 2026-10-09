@@ -4,10 +4,13 @@
 ------------
 - 页面：/data
 - 接口：/api/output/all（data_103 按日聚合）、/api/plan/get（月度计划）
+- 导出：/api/export/output（Excel，openpyxl 生成 xlsx）
 数据访问统一走 db.py（主库 db_day.db）
 """
 from datetime import datetime
-from flask import Blueprint, jsonify, request, render_template
+from io import BytesIO
+from flask import Blueprint, jsonify, request, render_template, send_file
+from openpyxl import Workbook
 from db import query, fetchone
 
 data_bp = Blueprint('data', __name__)
@@ -45,6 +48,11 @@ def page_data():
 
 @data_bp.route("/api/output/all")
 def api_all():
+    return jsonify(get_all_rows())
+
+
+def get_all_rows():
+    """日聚合数据（与前端 dataScr.js 的原始数据一致，已排序、日期格式 2026/09/01）"""
     rows = query('''
     SELECT
     日期 AS raw_date,
@@ -87,7 +95,97 @@ def api_all():
             "外排水量": raw_row["外排水量"]
         }
         res.append(out)
-    return jsonify(res)
+    return res
+
+
+# 各指标导出列配置：{key: (表头列表, 字段列表)}
+EXPORT_COLUMNS = {
+    "lithium": (["日期", "碳酸锂车间产出", "碳酸锂仓库出库"],
+                ["日期", "碳酸锂车间产出", "碳酸锂仓库出库"]),
+    "sodiumSulfate": (["日期", "硫酸钠日累计", "干料", "湿料", "杂质料", "落地料"],
+                      ["日期", "硫酸钠", "硫酸钠干料", "硫酸钠湿料", "硫酸钠杂质料", "硫酸钠落地料"]),
+    "sodiumCarbonate": (["日期", "碳酸钠车间消耗", "碳酸钠仓库出库", "碳酸钠/碳酸锂消耗比"],
+                        ["日期", "碳酸钠车间消耗", "碳酸钠仓库出库", "ratio_na_li"]),
+    "drain": (["日期", "外排水量"],
+              ["日期", "外排水量"]),
+}
+
+
+@data_bp.route("/api/export/output")
+def api_export_output():
+    """导出 Excel：按指标 key + 日期范围(start~end 含) + 粒度(day/month) 生成 xlsx"""
+    key = request.args.get("key", "lithium")
+    start = request.args.get("start", "")   # 2026-08-31
+    end = request.args.get("end", "")       # 2026-09-30
+    granularity = request.args.get("granularity", "day")
+
+    headers, fields = EXPORT_COLUMNS.get(key, EXPORT_COLUMNS["lithium"])
+    rows = get_all_rows()
+
+    # 1) 按日期范围过滤（与前端 filterByDate 一致：start 含、end 含）
+    def dt_of(dstr):
+        try:
+            return datetime.strptime(dstr, "%Y/%m/%d")
+        except (ValueError, TypeError):
+            return None
+
+    start_dt = datetime.strptime(start, "%Y-%m-%d") if start else None
+    end_dt = datetime.strptime(end, "%Y-%m-%d") if end else None
+
+    filtered = []
+    for r in rows:
+        d = dt_of(r["日期"])
+        if d is None:
+            continue
+        if start_dt and d < start_dt:
+            continue
+        if end_dt and d > end_dt:
+            continue
+        filtered.append(r)
+
+    # 2) 按月聚合（与前端 groupByMonth 逻辑一致）
+    if granularity == "month":
+        agg = {}
+        for r in filtered:
+            m = r["日期"][:7]  # "2026/09/01"[:7] → "2026/09"
+            if m not in agg:
+                agg[m] = dict(r)
+                agg[m]["日期"] = m
+            else:
+                for f in fields:
+                    if f == "日期" or f == "ratio_na_li":
+                        continue
+                    agg[m][f] = float(agg[m].get(f) or 0) + float(r.get(f) or 0)
+        # 碳酸钠消耗比：加总后 = 消耗 / 产出
+        for m in agg:
+            li_out = float(agg[m].get("碳酸锂车间产出") or 0)
+            na_con = float(agg[m].get("碳酸钠车间消耗") or 0)
+            agg[m]["ratio_na_li"] = round(na_con / li_out, 2) if li_out > 0 else 0
+        filtered = list(agg.values())
+
+    # 3) openpyxl 生成 xlsx
+    wb = Workbook()
+    ws = wb.active
+    ws.title = key
+    ws.append(headers)
+    for r in filtered:
+        row_vals = []
+        for f in fields:
+            v = r.get(f)
+            if f == "ratio_na_li":
+                row_vals.append(round(float(v or 0), 2))
+            elif f == "日期":
+                row_vals.append(v or "")
+            else:
+                row_vals.append(round(float(v or 0), 2))
+        ws.append(row_vals)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f"产量数据_{key}_{start or 'all'}_{end or 'all'}_{granularity}.xlsx"
+    return send_file(buf, as_attachment=True, download_name=fname,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @data_bp.route("/api/plan/get")

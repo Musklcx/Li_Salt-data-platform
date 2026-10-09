@@ -78,13 +78,7 @@ function getTodayStr() {
 
 async function loadData() {
     try {
-        const resp = await fetch("/api/output/all");
-        if (!resp.ok) {
-            console.error("接口返回错误", resp.status);
-            alert("接口访问失败，检查后端路由地址");
-            return;
-        }
-        rawAllData = await resp.json();
+        rawAllData = await request.get("/api/output/all");
         console.log("拿到后端数据：", rawAllData);
         document.getElementById("startDate").value = getLastDayOfPrevMonth();
         document.getElementById("endDate").value = getTodayStr();
@@ -452,10 +446,39 @@ window.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById("btnSearch").onclick = () => {
         render();
     }
+    document.getElementById("btnExport").onclick = () => {
+        exportExcel();
+    }
     window.addEventListener('resize', () => {
         myChart.resize();
     })
     loadData();
 })
+
+/* 导出 Excel：按当前指标/日期范围/粒度请求后端生成 xlsx 并下载 */
+async function exportExcel() {
+    const start = document.getElementById("startDate").value;
+    const end = document.getElementById("endDate").value;
+    const url = `/api/export/output?key=${currentKey}&start=${start}&end=${end}&granularity=${granularity}`;
+    try {
+        const resp = await fetch(url, { credentials: 'same-origin' });
+        if (!resp.ok) {
+            let j = null;
+            try { j = await resp.json(); } catch (e) {}
+            throw new Error((j && (j.msg || j.error)) || `导出失败（HTTP ${resp.status}）`);
+        }
+        const blob = await resp.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const gText = granularity === "month" ? "按月" : "按日";
+        a.download = `${keyNameMap[currentKey]}_${start}_至_${end}_${gText}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+    } catch (err) {
+        alert(err.message || '导出失败');
+    }
+}
 
 

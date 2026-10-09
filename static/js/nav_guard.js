@@ -3,8 +3,7 @@
   var links = document.querySelectorAll('a[href="/inventory"]');
   if (!links.length) return;
 
-  fetch('/api/me', { credentials: 'same-origin' })
-    .then(function (r) { return r.json(); })
+  request.get('/api/me')
     .then(function (j) {
       // 管理员正常访问；接口异常时保守拦截（后端还会兜底 403）
       if (j && j.code === 0 && j.data && j.data.role === 'admin') return;
