@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ======================================
-echo    103车间产量看板 Flask服务启动
+echo   锂盐车间数据共享Flask服务启动
 echo ======================================
 set "ROOT=%~dp0"
 set "PY_EXE=%ROOT%.venv\Scripts\python.exe"
@@ -21,7 +21,7 @@ if not exist "%APP_FILE%" (
     exit /b 1
 )
 
-cd /d "%ROOT%backend"
+cd /d "%ROOT%"
 echo.
 echo 👉正在启动Flask，出现 Running on 代表启动成功
 echo 👉按 Ctrl+C 停止服务

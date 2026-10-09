@@ -38,11 +38,19 @@
     vertical-align: middle !important;
 }
 
-/* 表格外层滚动容器统一圆角与边框 */
+/* 表格外层滚动容器统一边框
+   注意：不能给 table 加 overflow:hidden / border-radius，
+   否则 thead th 的 sticky 会失效（table 会变成 sticky 的滚动祖先，
+   而真正滚动的是 .table-wrap 容器） */
 .table-wrap table {
     border: 1px solid #e4e3dd !important;
-    border-radius: 6px !important;
-    overflow: hidden !important;
+}
+
+/* 原生表格表头固定（滚动时吸顶）：sticky 必须作用于 th，写在 thead 上无效 */
+.table-wrap thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
 }
 
 /* ---------- 2. element 表格（el-table，兼容 element-ui / element-plus） ---------- */

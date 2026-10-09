@@ -102,24 +102,7 @@
             font-size:20px;
             font-weight:bold;
         }
-        /* 已完成行绿色高亮（含斑马纹行：单元格背景一起覆盖） */
-        .row-done,
-        .row-done td {
-            background-color: #229451 !important;
-            color: #fff !important;
-        }
-        /* 未完成行悬停：强制浅灰，防止任何残留/旧样式把悬停行染成绿色 */
-        .el-table--enable-row-hover .el-table__body tr:not(.row-done):hover > td.el-table__cell,
-        .el-table--enable-row-hover .el-table__body tr:not(.row-done):hover > td {
-            background-color: #F5F7FA !important;
-        }
-        /* 已完成行悬停：保持绿色，不被其他 hover 样式覆盖 */
-        .row-done:hover,
-        .row-done:hover > td.el-table__cell,
-        .row-done:hover > td {
-            background-color: #229451 !important;
-            color: #fff !important;
-        }
+        /* 已完成行不再做绿色高亮，仅保留“排到底部”的排序功能 */
     </style>
 </head>
 <body>
@@ -267,9 +250,7 @@
           this.showTableData = [...noFinish, ...finished]
         },
         rowClassName({ row }){
-          if(row.done === "是"){
-            return 'row-done'
-          }
+          // 不再对“是”的行做颜色改变，仅保留 sortData 的排到底部逻辑
           return ''
         },
         cellClickEvent (row) {

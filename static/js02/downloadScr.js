@@ -3,7 +3,8 @@ $(function(){
     // ========= 数据源，4个分类 （增减new）=========
     const dataSource = {
         report: [
-            {title:"2026年8月103车间生产日报表",file:"/static/file/report/2026年8月103车间生产日报表.xlsx",date:"2026-08-31",isNew:true},
+            {title:"2026年9月103车间生产日报表",file:"/static/file/report/2026年9月103车间生产日报表.xlsx",date:"2026-08-31",isNew:true},
+            {title:"2026年8月103车间生产日报表",file:"/static/file/report/2026年8月103车间生产日报表.xlsx",date:"2026-08-31"},
             {title:"2026年7月103车间生产日报表",file:"/static/file/report/2026年7月103车间生产日报表.xlsx",date:"2026-07-31"},
             {title:"2026年6月103车间生产日报表",file:"/static/file/report/2026年6月103车间生产日报表.xlsx",date:"2026-06-30"},
             {title:"2026年5月103车间生产日报表",file:"/static/file/report/2026年5月103车间生产日报表.xlsx",date:"2026-05-30"},
@@ -13,7 +14,7 @@ $(function(){
             {title:"2026年1月103车间生产日报表",file:"/static/file/report/2026年1月103车间生产日报表.xlsx",date:"2026-01-30"},
         ],
         kpi: [
-            {title:"2026年8月103车间绩效考核表",file:"/static/file/kpi/2026年8月103车间绩效考核表.xlsx",date:"2026-08-25",isNew:true},
+            {title:"2026年9月103车间绩效考核表",file:"/static/file/kpi/2026年9月103车间绩效考核表.xlsx",date:"2026-08-25",isNew:true},
             {title:"103车间岗位员工绩效汇总表",file:"/static/file/kpi/103车间岗位员工绩效汇总表.xlsx",date:"2026-07-20"},
             {title:"103车间岗位班长绩效汇总表",file:"/static/file/kpi/103车间岗位班长绩效汇总表.xlsx",date:"2026-07-19"},
         ],
