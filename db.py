@@ -22,8 +22,11 @@ DB_FILE = os.path.join(BASE_DIR, "data", "db_day.db")
 def get_db():
     """取当前请求的数据库连接（不存在则创建）"""
     if 'db' not in g:
-        g.db = sqlite3.connect(DB_FILE)
+        g.db = sqlite3.connect(DB_FILE, timeout=10)
         g.db.row_factory = sqlite3.Row
+        # 并发加固：WAL 模式（读写不互斥）+ busy_timeout（写锁等待，避免 database is locked）
+        g.db.execute('PRAGMA journal_mode=WAL')
+        g.db.execute('PRAGMA busy_timeout=5000')
     return g.db
 
 

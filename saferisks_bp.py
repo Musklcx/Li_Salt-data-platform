@@ -81,28 +81,38 @@ def risk_upload_img():
     row_id = request.form.get("row_id", "")
     if not row_id:
         return fail("缺少行ID")
+    if not row_id.isdigit():
+        return fail("行ID不合法")
+    # 文件大小限制 5MB
+    if (request.content_length or 0) > 5 * 1024 * 1024:
+        return fail("图片不能超过 5MB")
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in ALLOWED_EXT:
         return fail("只支持 png/jpg/jpeg/gif/bmp/webp 格式")
-    img = Image.open(file.stream)
-    img_ratio = img.width / img.height
-    target_ratio = TARGET_W / TARGET_H
-    if img_ratio > target_ratio:
-        new_h = TARGET_H
-        new_w = int(new_h * img_ratio)
-    else:
-        new_w = TARGET_W
-        new_h = int(new_w / img_ratio)
-    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-    left = (new_w - TARGET_W) / 2
-    top = (new_h - TARGET_H) / 2
-    right = left + TARGET_W
-    bottom = top + TARGET_H
-    img = img.crop((left, top, right, bottom))
-    # 按行ID命名：af_行ID.jpg
-    save_name = f"af_{row_id}.jpg"
-    save_path = os.path.join(UPLOAD_FOLDER, save_name)
-    img.convert("RGB").save(save_path, quality=85)
+    try:
+        # 限制解码像素总量（防止超大图片耗尽内存）
+        Image.MAX_IMAGE_PIXELS = 50_000_000
+        img = Image.open(file.stream)
+        img_ratio = img.width / img.height
+        target_ratio = TARGET_W / TARGET_H
+        if img_ratio > target_ratio:
+            new_h = TARGET_H
+            new_w = int(new_h * img_ratio)
+        else:
+            new_w = TARGET_W
+            new_h = int(new_w / img_ratio)
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        left = (new_w - TARGET_W) / 2
+        top = (new_h - TARGET_H) / 2
+        right = left + TARGET_W
+        bottom = top + TARGET_H
+        img = img.crop((left, top, right, bottom))
+        # 按行ID命名：af_行ID.jpg
+        save_name = f"af_{row_id}.jpg"
+        save_path = os.path.join(UPLOAD_FOLDER, save_name)
+        img.convert("RGB").save(save_path, quality=85)
+    except Exception as e:
+        return fail("图片处理失败，请确认文件是有效图片")
     img_url = f"/static/assets/img/upload/{save_name}"
     return ok(msg="上传成功", data={"url": img_url})
 
@@ -117,6 +127,8 @@ def risk_update_img():
     img_url = data["url"]
     if field not in ("imgAfter",):
         return fail("字段不合法")
+    if not str(row_id).isdigit():
+        return fail("行ID不合法")
     execute(f"UPDATE safeRisks SET {field}=? WHERE ID=?", (img_url, row_id))
     return ok(msg="保存成功")
 
@@ -129,13 +141,19 @@ def risk_delete_img():
     row_id = data["id"]
     field = data["field"]
     img_url = data.get("url", "")
+    # 列名白名单校验（防 SQL 注入：field 由 f-string 拼入 SQL）
+    if field not in ("imgBefore", "imgAfter"):
+        return fail("字段不合法")
+    if not str(row_id).isdigit():
+        return fail("行ID不合法")
     if img_url and img_url.startswith("/static/assets/img/upload/"):
         file_name = img_url.split("/")[-1]
-        file_path = os.path.join(UPLOAD_FOLDER, file_name)
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception as e:
-                print("删除文件失败:", e)
+        if file_name and file_name != "." and ".." not in file_name:
+            file_path = os.path.join(UPLOAD_FOLDER, file_name)
+            if os.path.isfile(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print("删除文件失败:", e)
     execute(f"UPDATE safeRisks SET {field}=? WHERE ID=?", ("", row_id))
     return ok(msg="删除成功")

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>锂盐车间共享平台 - 用户管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
+    <style>
+        /* 顶部导航样式（与 data 等页面一致） */
+        .top-nav { display: flex; gap: 2px; margin-bottom: 12px; }
+        .nav-tab {
+            padding: 12px 28px; background: #eee; color: #333;
+            text-decoration: none; font-size: 16px;
+            display: inline-block; cursor: pointer;
+        }
+        .nav-tab.active { background: #e74c3c; color: #fff; }
+        .nav-dropdown { position: relative; }
+        .nav-dropdown-menu {
+            display: none; position: absolute; top: 100%; left: 0;
+            background: #888; min-width: 220px; z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu { display: block; }
+        .nav-dropdown-menu a {
+            display: block; padding: 12px 20px; color: #fff; text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover { background: #666; }
+
+        body { background: #f4f3ee; font-family: "PingFang SC","Microsoft YaHei",sans-serif; }
+        .page-title { font-size: 20px; font-weight: 600; color: #1A1B1C; margin: 18px 0 14px; }
+        .table-wrap { background: #fff; border: 1px solid #e4e3dd; border-radius: 10px; overflow: auto; }
+        .table-wrap table { border-collapse: collapse; width: 100%; font-size: 13px; }
+        .table-wrap thead th {
+            background: #205493; color: #fff; padding: 10px 14px;
+            text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 2;
+            white-space: nowrap;
+        }
+        .table-wrap tbody td { padding: 9px 14px; border-bottom: 1px solid #f0f0f0; color: #333; }
+        .table-wrap tbody tr:nth-child(even) { background: #fafafa; }
+        .table-wrap tbody tr:hover { background: #eef4fb; }
+        .role-tag {
+            display: inline-block; padding: 2px 10px; border-radius: 4px;
+            font-size: 12px; font-weight: 600;
+        }
+        .role-tag.admin { background: #fdecec; color: #cf1322; }
+        .role-tag.operator { background: #e8f7ee; color: #389e0d; }
+        .btn-reset {
+            background: #205493; color: #fff; border: none; border-radius: 6px;
+            padding: 5px 14px; font-size: 12.5px; cursor: pointer;
+        }
+        .btn-reset:hover { background: #1a4377; }
+        .empty-tip { padding: 30px; text-align: center; color: #9ca3af; }
+        /* 重置密码弹窗 */
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(0,0,0,.35);
+            z-index: 99999; display: flex; align-items: center; justify-content: center;
+        }
+        .modal-box {
+            background: #fff; border-radius: 12px; padding: 24px 28px;
+            width: 360px; max-width: 88vw; box-shadow: 0 8px 30px rgba(0,0,0,.18);
+        }
+        .modal-box h3 { margin: 0 0 6px; font-size: 16px; color: #1A1B1C; }
+        .modal-box .sub { font-size: 12.5px; color: #6B7280; margin-bottom: 16px; }
+        .modal-box input {
+            width: 100%; box-sizing: border-box; padding: 9px 12px;
+            border: 1px solid #d0d5dd; border-radius: 6px; font-size: 13.5px;
+            margin-bottom: 10px; outline: none;
+        }
+        .modal-box input:focus { border-color: #205493; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+        .modal-actions button {
+            border: none; border-radius: 8px; padding: 8px 22px;
+            font-size: 13.5px; cursor: pointer;
+        }
+        .modal-actions .cancel { background: #eee; color: #333; }
+        .modal-actions .confirm { background: #205493; color: #fff; }
+        .modal-actions .confirm:hover { background: #1a4377; }
+        .tip { font-size: 12.5px; color: #EA6668; margin-top: 4px; min-height: 18px; }
+    </style>
+</head>
+<body>
+<div style="padding:16px;">
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            信息公示 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/notice">班组工作量</a>
+                <a href="/inventory">期末金属量</a>
+            </div>
+        </div>
+        <a href="/staff" class="nav-tab">人员概况</a>
+        <a href="/download" class="nav-tab">下载专区</a>
+        <div class="nav-tab nav-dropdown">
+            系统管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/users">用户管理</a>
+                <a href="/docs">接口文档</a>
+                <a href="/logs">运行日志</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-title">用户管理</div>
+
+    <!-- 用户表格 -->
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:60px;">ID</th>
+                    <th>用户名</th>
+                    <th>邮箱</th>
+                    <th style="width:110px;">角色</th>
+                    <th>创建时间</th>
+                    <th style="width:120px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="userBody">
+                <tr><td colspan="6"><div class="empty-tip">加载中…</div></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 重置密码弹窗 -->
+<div class="modal-mask" id="resetModal" style="display:none;">
+    <div class="modal-box">
+        <h3>重置密码</h3>
+        <div class="sub" id="resetUser">用户：-</div>
+        <input type="password" id="newPwd" placeholder="新密码（至少 6 位）">
+        <input type="password" id="newPwd2" placeholder="确认新密码">
+        <div class="tip" id="resetTip"></div>
+        <div class="modal-actions">
+            <button class="cancel" id="cancelReset">取消</button>
+            <button class="confirm" id="confirmReset">确认重置</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/request.js') }}"></script>
+<script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
+<script>
+(function () {
+    var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+    function esc(s) { return String(s || '').replace(/[&<>]/g, function (c) { return ESC[c]; }); }
+    var currentEmail = null;
+
+    function loadUsers() {
+        return request.get('/api/users').then(function (users) {
+            var body = document.getElementById('userBody');
+            if (!users.length) {
+                body.innerHTML = '<tr><td colspan="6"><div class="empty-tip">暂无用户</div></td></tr>';
+                return;
+            }
+            body.innerHTML = users.map(function (u) {
+                var roleTag = u.role === 'admin'
+                    ? '<span class="role-tag admin">管理员</span>'
+                    : '<span class="role-tag operator">操作员</span>';
+                return '<tr>' +
+                    '<td>' + u.id + '</td>' +
+                    '<td>' + esc(u.username) + '</td>' +
+                    '<td>' + esc(u.email) + '</td>' +
+                    '<td>' + roleTag + '</td>' +
+                    '<td>' + esc(u.created_at || '-') + '</td>' +
+                    '<td><button class="btn-reset" data-email="' + esc(u.email) + '" data-name="' + esc(u.username) + '">重置密码</button></td>' +
+                    '</tr>';
+            }).join('');
+            body.querySelectorAll('.btn-reset').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    openModal(btn.getAttribute('data-email'), btn.getAttribute('data-name'));
+                });
+            });
+        });
+    }
+
+    function openModal(email, name) {
+        currentEmail = email;
+        document.getElementById('resetUser').textContent = '用户：' + name + '（' + email + '）';
+        document.getElementById('newPwd').value = '';
+        document.getElementById('newPwd2').value = '';
+        document.getElementById('resetTip').textContent = '';
+        document.getElementById('resetModal').style.display = 'flex';
+        document.getElementById('newPwd').focus();
+    }
+
+    function closeModal() {
+        document.getElementById('resetModal').style.display = 'none';
+        currentEmail = null;
+    }
+
+    document.getElementById('cancelReset').addEventListener('click', closeModal);
+    document.getElementById('confirmReset').addEventListener('click', function () {
+        var p1 = document.getElementById('newPwd').value;
+        var p2 = document.getElementById('newPwd2').value;
+        var tip = document.getElementById('resetTip');
+        if (!p1) { tip.textContent = '请输入新密码'; return; }
+        if (p1.length < 6) { tip.textContent = '新密码长度至少 6 位'; return; }
+        if (p1 !== p2) { tip.textContent = '两次输入的密码不一致'; return; }
+        var btn = this;
+        btn.disabled = true;
+        request.post('/api/users/reset-password', { email: currentEmail, new_password: p1 })
+            .then(function (data) {
+                alert(data && data.msg ? data.msg : '密码已重置');
+                closeModal();
+                loadUsers();
+            })
+            .catch(function (e) {
+                tip.textContent = e.message;
+            })
+            .finally(function () { btn.disabled = false; });
+    });
+    // 点遮罩关闭
+    document.getElementById('resetModal').addEventListener('click', function (e) {
+        if (e.target === this) closeModal();
+    });
+
+    loadUsers().catch(function (e) {
+        document.getElementById('userBody').innerHTML =
+            '<tr><td colspan="6"><div class="empty-tip">加载失败：' + esc(e.message) + '</div></td></tr>';
+    });
+})();
+</script>
+</body>
+</html>

@@ -27,9 +27,11 @@ EDIT_PASSWORD = 'admin888'
 # ---------- DB ----------
 def get_db():
     if 'inv_db' not in g:
-        g.inv_db = sqlite3.connect(DB_PATH)
+        g.inv_db = sqlite3.connect(DB_PATH, timeout=10)
         g.inv_db.row_factory = sqlite3.Row
         g.inv_db.execute('PRAGMA foreign_keys = ON')
+        g.inv_db.execute('PRAGMA journal_mode=WAL')
+        g.inv_db.execute('PRAGMA busy_timeout=5000')
     return g.inv_db
 
 

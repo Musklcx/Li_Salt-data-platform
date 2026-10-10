@@ -40,9 +40,11 @@ def auth_config(key, default=None):
 # ---- 数据库 ----
 def get_db():
     if 'auth_db' not in g:
-        g.auth_db = sqlite3.connect(AUTH_DB_PATH)
+        g.auth_db = sqlite3.connect(AUTH_DB_PATH, timeout=10)
         g.auth_db.row_factory = sqlite3.Row
         g.auth_db.execute('PRAGMA foreign_keys = ON')
+        g.auth_db.execute('PRAGMA journal_mode=WAL')
+        g.auth_db.execute('PRAGMA busy_timeout=5000')
     return g.auth_db
 
 
@@ -349,3 +351,48 @@ def me():
         'role': row['role'],
         'created_at': row['created_at'],
     })
+
+
+# ---- API：管理员用户管理（仅管理员，由 app.py 全局权限拦截）----
+@auth_bp.route('/users')
+def users_page():
+    """用户管理页面（管理员）"""
+    return render_template('users.html')
+
+
+@auth_bp.get('/api/users')
+def admin_users():
+    """用户列表（管理员）"""
+    db = get_db()
+    rows = db.execute(
+        'SELECT id, username, email, role, created_at FROM users ORDER BY id'
+    ).fetchall()
+    return jsonify(code=0, msg='ok', data=[{
+        'id': r['id'],
+        'username': r['username'],
+        'email': r['email'],
+        'role': r['role'],
+        'created_at': r['created_at'],
+    } for r in rows])
+
+
+@auth_bp.post('/api/users/reset-password')
+def admin_reset_password():
+    """管理员重置用户密码（仅管理员）"""
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    new_password = data.get('new_password') or ''
+    if not email or not new_password:
+        return jsonify(code=400, msg='邮箱和新密码都不能为空', data=None), 400
+    if len(new_password) < 6:
+        return jsonify(code=400, msg='新密码长度至少 6 位', data=None), 400
+    db = get_db()
+    row = db.execute(
+        'SELECT id, username FROM users WHERE email = ?', (email,)
+    ).fetchone()
+    if row is None:
+        return jsonify(code=404, msg='该邮箱用户不存在', data=None), 404
+    new_hash = hash_password(new_password)
+    db.execute('UPDATE users SET password_hash = ? WHERE email = ?', (new_hash, email))
+    db.commit()
+    return jsonify(code=0, msg=f'已重置用户 [{row["username"]}] 的密码', data=None)

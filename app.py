@@ -71,9 +71,9 @@ PUBLIC_PATHS = {
     '/api/login', '/api/register', '/api/register/send-code',
 }
 
-# 只有管理员能访问的路径前缀（期末金属量盘点整组 + 运行日志/监控 + 接口文档）
+# 只有管理员能访问的路径前缀（期末金属量盘点整组 + 运行日志/监控 + 接口文档 + 用户管理）
 ADMIN_ONLY_PREFIXES = ('/inventory', '/api/state', '/api/rows', '/api/unlock', '/api/periods', '/api/import',
-                       '/logs', '/api/logs', '/api/health', '/docs', '/api/docs')
+                       '/logs', '/api/logs', '/api/health', '/docs', '/api/docs', '/users', '/api/users')
 
 
 @app.before_request
