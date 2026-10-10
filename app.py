@@ -35,12 +35,19 @@ app = Flask(__name__)
 init_logging(app)  # 请求日志 / 错误日志 / 运行统计（logger.py）
 
 # ---- 登录认证配置（auth 蓝图使用，移植自 login 项目）----
-app.config['SECRET_KEY'] = os.environ.get(
-    'JWT_SECRET',
-    'dev-insecure-secret-please-change-me-to-a-long-random-string-32bytes+'
-)
+# JWT_SECRET 由系统环境变量注入；未设置时启动生成随机密钥（安全兜底：重启后所有会话失效，提示固化）
+_js = os.environ.get('JWT_SECRET', '').strip()
+if not _js:
+    import secrets
+    _js = secrets.token_hex(32)
+    print('[警告] 环境变量 JWT_SECRET 未设置，已生成随机密钥；重启服务后所有已登录会话将失效。'
+          '请以管理员执行: setx JWT_SECRET "<随机串>" /M 后重启服务固化。')
+app.config['SECRET_KEY'] = _js
 app.config['JWT_ALGORITHM'] = 'HS256'
 app.config['JWT_EXPIRE_HOURS'] = 2
+# 注册开关：默认关闭（仅管理员可通过「用户管理→新增用户」开通账号）
+# 需要开放时以管理员执行: setx REGISTER_ENABLED "1" /M 后重启服务
+app.config['REGISTER_ENABLED'] = os.environ.get('REGISTER_ENABLED', '').strip().lower() in ('1', 'true', 'yes', 'on')
 # 邮箱验证码（未配置 SMTP_HOST 时验证码打印到服务控制台，便于本地联调）
 app.config['SMTP_HOST'] = os.environ.get('SMTP_HOST', '')
 app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '465'))

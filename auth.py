@@ -242,6 +242,9 @@ def send_code():
 def register():
     
     """注册新账号（邮箱+验证码）"""
+    # 注册开关（默认关闭）：仅管理员通过「用户管理→新增用户」开通账号
+    if not current_app.config.get('REGISTER_ENABLED'):
+        return jsonify(code=403, msg='注册通道已关闭，请联系管理员开通账号', data=None), 403
     data = request.get_json(silent=True) or {}
     username = (data.get('username') or '').strip()
     email = (data.get('email') or '').strip().lower()
@@ -396,3 +399,32 @@ def admin_reset_password():
     db.execute('UPDATE users SET password_hash = ? WHERE email = ?', (new_hash, email))
     db.commit()
     return jsonify(code=0, msg=f'已重置用户 [{row["username"]}] 的密码', data=None)
+
+
+@auth_bp.post('/api/users/create')
+def admin_create_user():
+    """管理员新增用户（仅管理员；注册关闭后的受控开号通道）"""
+    data = request.get_json(silent=True) or {}
+    username = (data.get('username') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+    role = (data.get('role') or 'operator').strip().lower()
+    if not username:
+        return jsonify(code=400, msg='请输入用户名', data=None), 400
+    if not EMAIL_RE.match(email):
+        return jsonify(code=400, msg='邮箱格式不正确', data=None), 400
+    if len(password) < 6:
+        return jsonify(code=400, msg='密码长度至少 6 位', data=None), 400
+    if role not in ('admin', 'operator'):
+        return jsonify(code=400, msg='角色只能是 管理员 或 操作员', data=None), 400
+    db = get_db()
+    exists = db.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+    if exists:
+        return jsonify(code=409, msg='该邮箱已存在', data=None), 409
+    new_hash = hash_password(password)
+    db.execute(
+        'INSERT INTO users (username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)',
+        (username, email, new_hash, role, datetime.datetime.utcnow().isoformat())
+    )
+    db.commit()
+    return jsonify(code=0, msg=f'已创建用户 [{username}]（{role}）', data=None)
