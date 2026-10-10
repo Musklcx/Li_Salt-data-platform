@@ -23,12 +23,12 @@ if not exist "%APP_FILE%" (
 
 cd /d "%ROOT%"
 echo.
-echo 👉正在启动Flask，出现 Running on 代表启动成功
+echo 👉正在启动（waitress 生产服务器），出现 Serving on http://0.0.0.0:5000 代表启动成功
 echo 👉按 Ctrl+C 停止服务
 echo ======================================
 echo.
 
-"%PY_EXE%" "%APP_FILE%"
+"%PY_EXE%" -m waitress --listen=0.0.0.0:5000 --threads=8 app:app
 if %errorlevel% neq 0 (
     echo.
     echo ⚠️ Flask程序异常退出，错误码：%errorlevel%
