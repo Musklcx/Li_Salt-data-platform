@@ -7,8 +7,11 @@
 说明来源：视图函数 docstring 第一行；未写注释的显示为「—」（可后续逐个补充）
 """
 import inspect
-from flask import Blueprint, render_template, current_app
+import os
+import datetime
+from flask import Blueprint, render_template, current_app, request
 from resp import ok
+import check_report as cr
 
 docs_bp = Blueprint('docs', __name__)
 
@@ -68,3 +71,37 @@ def api_docs():
         })
     routes.sort(key=lambda r: (r['module'], r['path']))
     return ok({'routes': routes})
+
+
+@docs_bp.route('/api/checkcard/generate', methods=['POST'])
+def api_checkcard_generate():
+    """生成数据核对卡（图片）到桌面：取所选日期前一天的数据"""
+    today = datetime.date.today()
+    sel = request.args.get('date')  # 前端选择的日期 YYYY-MM-DD（默认今天）
+    if sel:
+        try:
+            base = datetime.datetime.strptime(sel, '%Y-%m-%d').date()
+        except ValueError:
+            return ok({'skipped': True, 'reason': '日期格式不正确，应为 YYYY-MM-DD'})
+    else:
+        base = today
+    data_date = base - datetime.timedelta(days=1)
+    date_str = data_date.strftime('%Y/%m/%d')
+
+    rows = cr.load_day_rows(date_str)
+    if cr.is_all_empty(rows):
+        return ok({'skipped': True, 'reason': f'{date_str} 无记录（全空），未生成'})
+    if cr.is_all_zero(rows):
+        return ok({'skipped': True, 'reason': f'{date_str} 核对字段全 0，未生成'})
+
+    shifts = cr.shifts_of(data_date)
+    c = cr.collect(data_date, rows, shifts)
+    tag = data_date.strftime('%m-%d')
+    img_path = os.path.join(cr.SAVE_DIR, f'数据核对_{tag}.png')
+    cr.render_image(c, img_path)
+
+    return ok({
+        'skipped': False,
+        'date': date_str,
+        'img': img_path,
+    })

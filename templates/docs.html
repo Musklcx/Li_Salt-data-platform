@@ -101,6 +101,11 @@
             <option value="">全部模块</option>
         </select>
         <span class="doc-count" id="filterTip"></span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span class="doc-count" style="font-size:13px;">核对日期</span>
+            <input type="date" id="cardDate" style="width:150px;">
+            <button id="genCardBtn" style="padding:8px 18px;background:#205493;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">生成图片</button>
+        </span>
     </div>
 
     <!-- 接口表格 -->
@@ -179,6 +184,35 @@
 
     document.getElementById('searchInput').addEventListener('input', render);
     document.getElementById('moduleSelect').addEventListener('change', render);
+
+    // 生成图片（取所选日期的前一天数据 → 保存到桌面）
+    var cardDate = document.getElementById('cardDate');
+    (function () {
+        var d = new Date();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        cardDate.value = d.getFullYear() + '-' + m + '-' + day;  // 默认今天
+    })();
+
+    var genBtn = document.getElementById('genCardBtn');
+    genBtn.addEventListener('click', function () {
+        if (genBtn.disabled) return;
+        genBtn.disabled = true;
+        genBtn.textContent = '生成中…';
+        var sel = cardDate.value || '';
+        request.post('/api/checkcard/generate' + (sel ? '?date=' + encodeURIComponent(sel) : '')).then(function (data) {
+            if (data.skipped) {
+                alert('未生成：' + data.reason);
+            } else {
+                alert('已生成 ' + data.date + ' 的数据到桌面：\n' + data.img);
+            }
+        }).catch(function (e) {
+            alert('生成失败：' + e.message);
+        }).finally(function () {
+            genBtn.disabled = false;
+            genBtn.textContent = '生成图片';
+        });
+    });
 })();
 </script>
 </body>
