@@ -4,9 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>锂盐车间共享平台 - 现场问题</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/element-ui.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/element-plus.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
     <style>
+        /* Element Plus 主色统一为蓝色系（与 data 页内容区一致） */
+        :root {
+            --el-color-primary: #2b579a;
+            --el-color-primary-light-3: #6a85b6;
+            --el-color-primary-light-5: #95abd2;
+            --el-color-primary-light-7: #c0d0e9;
+            --el-color-primary-light-8: #d5e0f1;
+            --el-color-primary-light-9: #eaf0f9;
+            --el-color-primary-dark-2: #22467c;
+        }
         body {
             background: #f4f7fa;
             padding: 16px;
@@ -161,7 +171,7 @@
             <el-table-column type="index" label="序号" width="70" align="center"></el-table-column>
             <el-table-column prop="question" label="问题描述" min-width="240" align="center" show-overflow-tooltip></el-table-column>
             <el-table-column label="现场图片" width="140" align="center">
-                <template slot-scope="scope">
+                <template #default="scope">
                     <img :src="scope.row.imgUrl" style="width:40px;height:40px;object-fit:contain;cursor:pointer;">
                 </template>
             </el-table-column>
@@ -171,7 +181,7 @@
         </el-table>
 
         <!-- 编辑弹窗 -->
-        <el-dialog title="查看详情" :visible.sync="showDetails" width="1020px" :close-on-click-modal="false" append-to-body>
+        <el-dialog title="查看详情" v-model="showDetails" width="1020px" :close-on-click-modal="false" append-to-body>
             <div class="detail-wrap">
                 <div class="detail-left">
                     <img :src="detailImg" alt="现场图片">
@@ -196,8 +206,8 @@
                     <div class="form-row">
                         <div class="form-label">是否完成：</div>
                         <el-radio-group v-model="editForm.done" :disabled="!unlocked">
-                            <el-radio label="是">是</el-radio>
-                            <el-radio label="否">否</el-radio>
+                            <el-radio value="是">是</el-radio>
+                            <el-radio value="否">否</el-radio>
                         </el-radio-group>
                     </div>
                     <div style="text-align:right;margin-top:30px;">
@@ -209,13 +219,13 @@
         {% endraw %}
     </div>
 
-    <script src="{{ url_for('static', filename='lib/elementUI/vue.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='lib/elementUI/element-ui.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/vue.global.prod.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/element-plus.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/request.js') }}"></script>
     <script>
-    Vue.use(ELEMENT);
-    new Vue({
-      el: '#hazardApp',
+    // Vue3 + Element Plus（与 inventory 期末金属量页同栈）
+    const { createApp } = Vue;
+    createApp({
       data () {
         return {
           showDetails: false,
@@ -272,27 +282,27 @@
         async toggleLock(){
           if(this.unlocked){
             this.unlocked = false;
-            this.$message.info('已锁定，数据只读');
+            ElementPlus.ElMessage.info('已锁定，数据只读');
             return;
           }
           try{
-            const { value } = await this.$prompt('请输入编辑密码', '解锁编辑', {
+            const { value } = await ElementPlus.ElMessageBox.prompt('请输入编辑密码', '解锁编辑', {
               confirmButtonText: '确定', cancelButtonText: '取消', inputType: 'password'
             });
             // request.js 已解包：密码错误抛 Error('密码错误')，走 catch
             await request.post("/api/hazard/unlock", {password: value});
             this.unlocked = true;
-            this.$message.success('已解锁，可以编辑数据');
+            ElementPlus.ElMessage.success('已解锁，可以编辑数据');
           }catch(err){
             // 用户取消输入时 err === 'cancel'，不提示；其余为真实错误
             if (err && err !== 'cancel') {
-              this.$message.error(err.message || '密码错误');
+              ElementPlus.ElMessage.error(err.message || '密码错误');
             }
           }
         },
         async saveEdit(){
           if(!this.unlocked){
-            this.$message.warning('请先点击右上角「解锁编辑」再保存');
+            ElementPlus.ElMessage.warning('请先点击右上角「解锁编辑」再保存');
             return;
           }
           try{
@@ -310,7 +320,7 @@
           }
         }
       }
-    })
+    }).use(ElementPlus).mount('#hazardApp');
     </script>
 <script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
 </body>

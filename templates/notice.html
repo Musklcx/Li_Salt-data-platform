@@ -56,6 +56,164 @@
         .nav-dropdown-menu a:hover {
             background: #666;
         }
+
+        /* ===== 与 data 页风格统一（只覆盖外观，不改结构/逻辑） ===== */
+        /* 统一字体基调 */
+        body { font-size: 14px; color: #333; }
+
+        /* 汇总卡片 → data 页 KPI 卡片样式：细边框、小圆角、去阴影、灰标签+蓝色数值 */
+        .notice-card {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            box-shadow: none;
+            padding: 16px 20px;
+        }
+        .notice-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #8a8f99;
+            margin: 0 0 10px;
+        }
+        .notice-card p {
+            font-size: 16px;
+            color: #444;
+            margin: 8px 0;
+            line-height: 1.7;
+        }
+        .notice-card p span {
+            color: #2b579a;
+            font-weight: 600;
+            font-size: 17px;
+        }
+        /* 卡片间距与 data 页 KPI 行一致（12px） */
+        .row.g-4 { --bs-gutter-x: 0.75rem; }
+
+        /* 筛选条 → data 页控制条样式：细边框小圆角、去阴影 */
+        .notice-filter-wrap {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            box-shadow: none;
+            padding: 10px 16px;
+        }
+        .notice-filter-wrap span { font-size: 14px; color: #444; }
+        .notice-filter-wrap select,
+        .notice-filter-wrap input {
+            font-size: 13px;
+            padding: 5px 8px;
+            border: 1px solid #dde0e6;
+            border-radius: 6px;
+        }
+        /* 搜索按钮蓝色系与 data 页按钮一致 */
+        .notice-filter-wrap .btn-primary {
+            background: #2b579a;
+            border-color: #2b579a;
+        }
+        .notice-filter-wrap .btn-primary:hover,
+        .notice-filter-wrap .btn-primary:focus {
+            background: #1f4273;
+            border-color: #1f4273;
+        }
+
+        /* ===== 页面结构：与 data 页一致，表格吃满剩余高度 ===== */
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 16px;
+            overflow: hidden;
+        }
+        .top-nav { margin-bottom: 0; flex: none; }
+        .row.g-4 { margin-bottom: 0 !important; flex: none; }
+        .notice-filter-wrap { margin-bottom: 0 !important; flex: none; }
+
+        /* 表格卡片：白底细边框圆角，滚动发生在卡片内部 */
+        .table-panel {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table-scroll { flex: 1; min-height: 0; overflow: auto; }
+
+        /* ===== 表格：沿用 data 页规格 ===== */
+        table.dt {
+            width: 100%;
+            min-width: 1480px;      /* 19 列，保证横向可读，不硬挤 */
+            margin: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13.5px;
+        }
+        table.dt thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 11px 14px !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            letter-spacing: .3px;
+            text-align: right;
+            white-space: nowrap;
+            border: 0 !important;
+            border-bottom: 1px solid #1a4275 !important;
+        }
+        table.dt thead th:nth-child(1),
+        table.dt thead th:nth-child(2) { text-align: left; }
+        table.dt tbody td {
+            padding: 11px 14px !important;
+            font-size: 13.5px !important;
+            text-align: right;
+            white-space: nowrap;
+            border: 0;
+            border-bottom: 1px solid #f3f5f8;
+            font-variant-numeric: tabular-nums;
+            color: #2f353d;
+        }
+        table.dt tbody td:nth-child(1) { color: #4a5361; text-align: left; }
+        table.dt tbody td:nth-child(2) { text-align: left; }
+        table.dt tbody tr:nth-child(even) { background: #fcfdff; }
+        table.dt tbody tr:hover { background: #eef3fb; }
+        /* 合计行：吸底常显 */
+        table.dt tfoot td {
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            background: #f7f9fc;
+            padding: 11px 14px !important;
+            font-size: 13.5px !important;
+            text-align: right;
+            white-space: nowrap;
+            font-weight: 600;
+            color: #2f353d;
+            border: 0;
+            border-top: 2px solid #e6eaf0 !important;
+            font-variant-numeric: tabular-nums;
+        }
+        table.dt tfoot td:first-child {
+            text-align: left;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .table-empty td {
+            text-align: center !important;
+            color: #aab0ba !important;
+            padding: 40px 0 !important;
+            font-size: 13.5px;
+            background: #fff !important;
+        }
+
+        /* 矮屏兜底：改整页滚动，表格给足高度 */
+        @media (max-height: 820px) {
+            body { overflow: auto; }
+            .table-panel { flex: none; height: 520px; }
+        }
     </style>
 </head>
 <body>
@@ -136,10 +294,11 @@
             <button class="btn btn-primary" id="noticeSearchBtn">搜索</button>
         </div>
     </div>
-    <div class="table-wrap notice-table" style="max-height:calc(100vh - 350px);overflow:auto;">
-        <table class="table table-striped">
-            <thead id="noticeTableHead" style="position:sticky;top:0;background:#fff;z-index:1;">
-                <tr>
+    <div class="table-panel">
+        <div class="table-scroll">
+            <table class="table dt" id="noticeTable">
+                <thead id="noticeTableHead">
+                    <tr>
                     <th>日期</th>
                     <th>班组</th>
                     <th>碳酸锂产出</th>
@@ -160,10 +319,12 @@
                     <th>清合成釜</th>
                     <th>更换滤布</th>
                 </tr>
-            </thead>
-            <tbody id="noticeTableBody">
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="noticeTableBody">
+                </tbody>
+                <tfoot id="noticeTableFoot"></tfoot>
+            </table>
+        </div>
     </div>
 
 <script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>

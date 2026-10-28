@@ -15,18 +15,33 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
 
     <style>
+        /* ==========================================================
+           整页布局：视口高度内排布，滚动只发生在表格内部
+           导航(红) → KPI 卡片 → 控制条 → 图表卡片 + 表格卡片
+           ========================================================== */
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 16px;
+            overflow: hidden;
+            background: #f4f7fa;
+        }
+
         /* 顶部导航样式，和参考图一致 */
         .top-nav {
             display: flex;
             gap: 2px;
-            margin-bottom: 12px;
+            flex: none;
+            flex-wrap: wrap;
         }
         .nav-tab {
-            padding: 12px 28px;
+            padding: 11px 26px;
             background: #eee;
             color: #333;
             text-decoration: none;
-            font-size: 16px;
+            font-size: 15px;
             display: inline-block;
             cursor: pointer;
         }
@@ -58,10 +73,221 @@
         .nav-dropdown-menu a:hover {
             background: #666;
         }
+
+        /* ===== KPI 统计卡片（蓝色调） ===== */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            flex: none;
+        }
+        .kpi-card {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .kpi-card .kpi-label { font-size: 12.5px; color: #8a8f99; margin-bottom: 5px; }
+        .kpi-card .kpi-value { font-size: 21px; font-weight: 600; color: #2b579a; line-height: 1.3; }
+        .kpi-card .kpi-value small { font-size: 12px; font-weight: 400; color: #aab0ba; margin-left: 3px; }
+        .kpi-card .kpi-value .kpi-range { font-size: 12px; font-weight: 400; color: #aab0ba; margin-left: 8px; }
+        .kpi-card .kpi-value.diff-neg { color: #e74c3c; }
+        .kpi-card .kpi-value.diff-pos { color: #2f9e6b; }
+        /* 月度计划完成率卡片 */
+        .kpi-card.kpi-plan { background: #eef4fc; border-color: #d6e4f7; }
+        .plan-track { height: 7px; border-radius: 4px; background: #fff; overflow: hidden; }
+        .plan-fill { height: 100%; border-radius: 4px; background: #2b579a; width: 0%; transition: width .4s ease; }
+        .plan-pct { font-size: 17px; font-weight: 600; color: #2b579a; }
+        .plan-foot { font-size: 12px; color: #7d93b3; margin-top: 6px; }
+
+        /* ===== 控制条 ===== */
+        .top-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: none;
+            margin-bottom: 0;
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        .top-row .spacer { flex: 1; }
+        .metric-group > button {
+            padding: 6px 15px;
+            border: 1px solid #2b579a;
+            background: #fff;
+            color: #2b579a;
+            border-radius: 6px;
+            font-size: 13.5px;
+            cursor: pointer;
+            margin-right: 6px;
+        }
+        .metric-group > button.active { background: #2b579a; color: #fff; }
+        .right-group { gap: 6px; }
+        .right-group button {
+            padding: 6px 14px;
+            border: 1px solid #4080ff;
+            background: #fff;
+            color: #4080ff;
+            border-radius: 6px;
+            font-size: 13.5px;
+        }
+        .right-group button.active { background: #2b579a; border-color: #2b579a; }
+        .right-group input[type="date"] {
+            padding: 5px 8px;
+            border: 1px solid #dde0e6;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #444;
+        }
+
+        /* ===== 主区域：图表卡片 + 表格卡片 ===== */
+        .page-main {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr);
+            gap: 12px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .p-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: none;
+            padding: 9px 14px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .p-title { font-size: 14px; font-weight: 600; color: #2f353d; }
+        .p-sub { font-size: 12px; color: #9aa3b0; }
+        .p-head .spacer { flex: 1; }
+        .p-body { flex: 1; min-height: 0; position: relative; }
+        /* 覆盖 homeStyle / dataCompar 里 #chart 的固定 450px 高度 */
+        #chart {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            border-radius: 0;
+        }
+
+        /* ===== 表格 ===== */
+        .table-scroll { flex: 1; min-height: 0; overflow: auto; }
+        table.dt {
+            width: 100%;
+            margin: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+            font-size: 13.5px;
+        }
+        table.dt thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 11px 14px !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            letter-spacing: .3px;
+            text-align: right;
+            white-space: nowrap;
+            border: 0 !important;
+            border-bottom: 1px solid #1a4275 !important;
+            cursor: pointer;
+            user-select: none;
+        }
+        table.dt thead th:hover { background: #2a63b0 !important; }
+        table.dt thead th:first-child { text-align: left; }
+        table.dt thead th .sort {
+            color: rgba(255, 255, 255, .65);
+            font-size: 11px;
+            margin-left: 5px;
+            font-weight: 400;
+        }
+        table.dt tbody td {
+            padding: 11px 14px !important;
+            font-size: 13.5px !important;
+            text-align: right;
+            white-space: nowrap;
+            border: 0;
+            border-bottom: 1px solid #f3f5f8;
+            font-variant-numeric: tabular-nums;
+            color: #2f353d;
+        }
+        table.dt tbody td:first-child { text-align: left; color: #4a5361; }
+        table.dt tbody tr:nth-child(even) { background: #fcfdff; }
+        table.dt tbody tr:hover { background: #f3f8ff; }
+        /* 首列（日期）宽度：按列数自适应，列多时收窄 */
+        table.dt th:first-child,
+        table.dt td:first-child { width: 15%; }
+        table.dt[data-cols="2"] th:first-child,
+        table.dt[data-cols="2"] td:first-child { width: 45%; }
+        /* 差值列：左侧分隔线 + 药丸色块 */
+        table.dt .col-sep { border-left: 1px solid #eef1f6; }
+        .dt .pill {
+            display: inline-block;
+            min-width: 74px;
+            text-align: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .dt .pill.neg { color: #d9483d; background: #fdeeec; }
+        .dt .pill.pos { color: #27905f; background: #eaf7f0; }
+        .dt .pill.zero { color: #8a8f99; background: #f2f4f7; }
+        /* 合计行：吸底 */
+        table.dt tfoot td {
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            background: #f7f9fc;
+            padding: 11px 14px !important;
+            font-size: 13.5px !important;
+            text-align: right;
+            white-space: nowrap;
+            font-weight: 600;
+            color: #2f353d;
+            border: 0;
+            border-top: 2px solid #e6eaf0 !important;
+            font-variant-numeric: tabular-nums;
+        }
+        table.dt tfoot td:first-child {
+            text-align: left;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        table.dt tfoot td.tf-neg { color: #d9483d; }
+        table.dt tfoot td.tf-pos { color: #27905f; }
+        .table-empty td {
+            text-align: center !important;
+            color: #aab0ba !important;
+            padding: 40px 0 !important;
+            font-size: 13.5px;
+            background: #fff !important;
+        }
+
+        /* 矮屏幕兜底：改为整页滚动，图表/表格给定合理高度，避免被压扁 */
+        @media (max-height: 820px) {
+            body { overflow: auto; }
+            .page-main { grid-template-rows: 320px 460px; }
+        }
     </style>
 </head>
 <body>
-<div style="padding:16px;">
     <!-- 顶部导航 -->
     <div class="top-nav">
         <a href="/data" class="nav-tab active">数据对比</a>
@@ -93,19 +319,39 @@
         </div>
     </div>
 
-    <!-- 生产数据页面内容 -->
-    <div class="stat-bar">
-        <div class="stat-item">当前选择：<span id="curMetricName">碳酸锂</span></div>
-        <div class="stat-item" id="statLithiumOutput">车间产出合计：<span id="lithiumOutputSum">0.00</span></div>
-        <div class="stat-item" id="statLithiumOut">仓库出库合计：<span id="lithiumOutSum">0.00</span></div>
-        <div class="stat-item" id="statSulfateDry" style="display:none;">干：<span id="sulfateDrySum">0.00</span></div>
-        <div class="stat-item" id="statSulfateWet" style="display:none;">湿：<span id="sulfateWetSum">0.00</span></div>
-        <div class="stat-item" id="statSulfateImpurity" style="display:none;">杂：<span id="sulfateImpuritySum">0.00</span></div>
-        <div class="stat-item" id="statSulfateLanded" style="display:none;">落地：<span id="sulfateLandedSum">0.00</span></div>
-        <div class="stat-item" id="statLithiumDiff">差值(出库‑产出)：<span id="lithiumDiffVal">0.00</span></div>
-        <div class="stat-item" id="statAvgRatio" style="display:none;">碳酸钠消耗平均值：<span id="avgRatioVal">0.00</span></div>
-        <div class="stat-item" id="statNormalSum">总值：<span id="sumVal">0.00</span></div>
+    <!-- KPI 统计卡片 -->
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">当前指标</div>
+            <div class="kpi-value" style="font-size:17px;"><span id="curMetricName">碳酸锂</span><span class="kpi-range" id="kpiRange"></span></div>
+        </div>
+        <div class="kpi-card" id="kpiACard">
+            <div class="kpi-label" id="kpiALabel">车间产出合计</div>
+            <div class="kpi-value" id="kpiAValue">0.00<small>t</small></div>
+        </div>
+        <div class="kpi-card" id="kpiBCard">
+            <div class="kpi-label" id="kpiBLabel">仓库出库合计</div>
+            <div class="kpi-value" id="kpiBValue">0.00<small>t</small></div>
+        </div>
+        <div class="kpi-card" id="kpiSubCard" style="display:none;">
+            <div class="kpi-label">四料合计（干/湿/杂/落地）</div>
+            <div class="kpi-value" style="font-size:15px;" id="kpiSubValue">-</div>
+        </div>
+        <div class="kpi-card" id="kpiDiffCard">
+            <div class="kpi-label" id="kpiDiffLabel">差值(出库‑产出)</div>
+            <div class="kpi-value" id="kpiDiffValue">0.00</div>
+        </div>
+        <div class="kpi-card kpi-plan" id="kpiPlanCard" style="display:none;">
+            <div class="kpi-label" id="kpiPlanLabel" style="color:#2b579a;">月度计划完成率</div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div class="plan-track" style="flex:1;"><div class="plan-fill" id="planFill"></div></div>
+                <span class="plan-pct" id="planPct">0%</span>
+            </div>
+            <div class="plan-foot" id="planFoot">-</div>
+        </div>
     </div>
+
+    <!-- 控制条 -->
     <div class="top-row">
         <div class="metric-group">
             <button data-key="lithium" class="active">碳酸锂</button>
@@ -113,32 +359,42 @@
             <button data-key="sodiumCarbonate">碳酸钠</button>
             <button data-key="drain">外排水</button>
         </div>
+        <span class="spacer"></span>
         <div class="right-group">
             <button id="btnDay" class="active">日</button>
             <button id="btnMonth">月</button>
             <button id="btnLine" class="active">折线图</button>
             <button id="btnBar">柱状图</button>
+            <button id="btnStack">堆叠柱状图</button>
             <input type="date" id="startDate">
             <input type="date" id="endDate">
             <button id="btnSearch">搜索</button>
             <button id="btnExport">导出Excel</button>
         </div>
     </div>
-    <div id="chart" style="width:100%;height:450px;"></div>
-    <div class="table-wrap" style="max-height:calc(100vh - 660px);overflow-y:auto;">
-        <table class="table table-striped" style="margin:0;font-size:14px;">
-            <thead id="tableHead" style="position:sticky;top:0;background:#fff;z-index:1;">
-                <tr style="height:36px;">
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+
+    <!-- 主区域：图表 + 表格，各自内部滚动 -->
+    <div class="page-main">
+        <div class="panel">
+            <div class="p-head">
+                <span class="p-title" id="chartTitle">趋势图</span>
+                <span class="p-sub" id="chartSub">按日 · 单位 t</span>
+            </div>
+            <div class="p-body">
+                <div id="chart"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="table-scroll">
+                <table class="table dt" id="dataTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                    <tfoot id="tableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
     </div>
-    <style>
-        .table-wrap td {
-            padding: 6px 12px;
-        }
-    </style>
-</div>
 
 <script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>
 <script src="{{ url_for('static',filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>

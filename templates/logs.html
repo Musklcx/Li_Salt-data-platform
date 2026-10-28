@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <title>锂盐车间共享平台 - 运行日志</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+    <!-- 已去除 Bootstrap 3 CDN 外链：页面全部使用下方自定义样式，无 bootstrap 类依赖（内网零外链） -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
     <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; }
         /* 顶部导航样式（与 data 等页面一致） */
         .top-nav { display: flex; gap: 2px; margin-bottom: 12px; }
         .nav-tab {
@@ -26,7 +28,7 @@
         }
         .nav-dropdown-menu a:hover { background: #666; }
 
-        body { background: #f4f3ee; font-family: "PingFang SC","Microsoft YaHei",sans-serif; }
+        body { background: #f4f7fa; font-family: "PingFang SC","Microsoft YaHei",sans-serif; }
         .page-title { font-size: 20px; font-weight: 600; color: #1A1B1C; margin: 18px 0 14px; }
         .health-cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
         .health-card {

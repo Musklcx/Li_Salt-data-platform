@@ -92,6 +92,15 @@ async function loadNoticeData(month,banzu){
     $("#naDiffText").html(naShow);
 
     //渲染表格明细
+    const $tbody = $("#noticeTableBody");
+    const $tfoot = $("#noticeTableFoot");
+
+    if (!listRes.length) {
+        $tbody.html(`<tr class="table-empty"><td colspan="19">该月份 / 班组下暂无数据</td></tr>`);
+        $tfoot.html("");
+        return;
+    }
+
     let html = "";
     listRes.forEach(row=>{
         html += `<tr>
@@ -116,7 +125,9 @@ async function loadNoticeData(month,banzu){
             <td>${Number(row.更换滤布||0).toFixed(2)}</td> 
         </tr>`;
     })
-    // 表格底部合计行：按当前筛选结果逐列累计
+    $tbody.html(html);
+
+    // 表格底部合计行：按当前筛选结果逐列累计（放在 tfoot，滚动时吸底常显）
     const sumFieldList = [
         "碳酸锂车间产出","硫酸钠","去蒸发前液处理量","合成前液处理量",
         "压滤机卸渣量","蒸发冷凝水","碳酸钠车间消耗","投活性炭、除氟剂量",
@@ -130,12 +141,10 @@ async function loadNoticeData(month,banzu){
             sums[f] += Number(row[f]||0);
         });
     });
-    html += `<tr style="font-weight:bold;background:#f8f9fa;border-top:2px solid #dee2e6;">
-        <td colspan="2">合计</td>`;
+    let footHtml = `<tr><td colspan="2">合计</td>`;
     sumFieldList.forEach(f=>{
-        html += `<td>${sums[f].toFixed(2)}</td>`;
+        footHtml += `<td>${sums[f].toFixed(2)}</td>`;
     });
-    html += `</tr>`;
-
-        $("#noticeTableBody").html(html);
+    footHtml += `</tr>`;
+    $tfoot.html(footHtml);
 }
