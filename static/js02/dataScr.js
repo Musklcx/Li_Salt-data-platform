@@ -239,7 +239,7 @@ async function renderPlanCard() {
         plan = Number(d[cfg.planKey] || 0);
     } catch (e) { /* 接口异常时完成率卡片显示无计划 */ }
 
-    $("kpiPlanLabel").innerText = `${monthKey.replace("-", "年")}月计划完成率`;
+    $("kpiPlanLabel").innerText = `${monthKey.replace("-", "年")}月完成率`;
     $("kpiPlanCard").style.display = "block";
     if (plan > 0) {
         const pct = Math.min(actual / plan * 100, 100);

@@ -93,12 +93,22 @@
         .kpi-card .kpi-value .kpi-range { font-size: 12px; font-weight: 400; color: #aab0ba; margin-left: 8px; }
         .kpi-card .kpi-value.diff-neg { color: #e74c3c; }
         .kpi-card .kpi-value.diff-pos { color: #2f9e6b; }
-        /* 月度计划完成率卡片 */
-        .kpi-card.kpi-plan { background: #eef4fc; border-color: #d6e4f7; }
-        .plan-track { height: 7px; border-radius: 4px; background: #fff; overflow: hidden; }
+        /* 月度计划完成率卡片（两行：标题+脚注 / 进度条+百分比，高度与普通卡片一致） */
+        .kpi-card.kpi-plan {
+            background: #eef4fc;
+            border-color: #d6e4f7;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 9px;
+        }
+        .plan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+        .plan-title { font-size: 13px; font-weight: 600; color: #2b579a; white-space: nowrap; }
+        .plan-foot { font-size: 12px; color: #7d93b3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .plan-bar-row { display: flex; align-items: center; gap: 10px; }
+        .plan-track { flex: 1; height: 7px; border-radius: 4px; background: #fff; overflow: hidden; }
         .plan-fill { height: 100%; border-radius: 4px; background: #2b579a; width: 0%; transition: width .4s ease; }
-        .plan-pct { font-size: 17px; font-weight: 600; color: #2b579a; }
-        .plan-foot { font-size: 12px; color: #7d93b3; margin-top: 6px; }
+        .plan-pct { font-size: 16px; font-weight: 600; color: #2b579a; min-width: 44px; text-align: right; }
 
         /* ===== 控制条 ===== */
         .top-row {
@@ -304,6 +314,7 @@
             <div class="nav-dropdown-menu">
                 <a href="/notice">班组工作量</a>
                 <a href="/inventory">期末金属量</a>
+                <a href="/utilities">水电汽消耗</a>
             </div>
         </div>
         <a href="/staff" class="nav-tab">人员概况</a>
@@ -342,12 +353,14 @@
             <div class="kpi-value" id="kpiDiffValue">0.00</div>
         </div>
         <div class="kpi-card kpi-plan" id="kpiPlanCard" style="display:none;">
-            <div class="kpi-label" id="kpiPlanLabel" style="color:#2b579a;">月度计划完成率</div>
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div class="plan-track" style="flex:1;"><div class="plan-fill" id="planFill"></div></div>
+            <div class="plan-head">
+                <span class="plan-title" id="kpiPlanLabel">月度计划完成率</span>
+                <span class="plan-foot" id="planFoot">-</span>
+            </div>
+            <div class="plan-bar-row">
+                <div class="plan-track"><div class="plan-fill" id="planFill"></div></div>
                 <span class="plan-pct" id="planPct">0%</span>
             </div>
-            <div class="plan-foot" id="planFoot">-</div>
         </div>
     </div>
 

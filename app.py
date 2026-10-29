@@ -25,6 +25,7 @@ from notice_bp import notice_bp
 from staff_bp import staff_bp
 from download_bp import download_bp
 from saferisks_bp import saferisks_bp
+from utilities_bp import utilities_bp
 from db import close_db, DB_FILE
 from logs_bp import logs_bp
 from docs_bp import docs_bp
@@ -66,6 +67,7 @@ app.register_blueprint(notice_bp)
 app.register_blueprint(staff_bp)
 app.register_blueprint(download_bp)
 app.register_blueprint(saferisks_bp)
+app.register_blueprint(utilities_bp)
 app.register_blueprint(logs_bp)
 app.register_blueprint(docs_bp)
 
