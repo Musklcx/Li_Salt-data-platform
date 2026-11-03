@@ -109,8 +109,8 @@ EXPORT_COLUMNS = {
                 ["日期", "碳酸锂车间产出", "碳酸锂仓库出库"]),
     "sodiumSulfate": (["日期", "硫酸钠日累计", "干料", "湿料", "杂质料", "落地料"],
                       ["日期", "硫酸钠", "硫酸钠干料", "硫酸钠湿料", "硫酸钠杂质料", "硫酸钠落地料"]),
-    "sodiumCarbonate": (["日期", "碳酸钠车间消耗", "碳酸钠仓库出库", "碳酸钠/碳酸锂消耗比"],
-                        ["日期", "碳酸钠车间消耗", "碳酸钠仓库出库", "ratio_na_li"]),
+    "sodiumCarbonate": (["日期", "碳酸钠车间消耗", "碳酸钠仓库出库"],
+                        ["日期", "碳酸钠车间消耗", "碳酸钠仓库出库"]),
     "drain": (["日期", "外排水量"],
               ["日期", "外排水量"]),
 }
@@ -158,14 +158,9 @@ def api_export_output():
                 agg[m]["日期"] = m
             else:
                 for f in fields:
-                    if f == "日期" or f == "ratio_na_li":
+                    if f == "日期":
                         continue
                     agg[m][f] = float(agg[m].get(f) or 0) + float(r.get(f) or 0)
-        # 碳酸钠消耗比：加总后 = 消耗 / 产出
-        for m in agg:
-            li_out = float(agg[m].get("碳酸锂车间产出") or 0)
-            na_con = float(agg[m].get("碳酸钠车间消耗") or 0)
-            agg[m]["ratio_na_li"] = round(na_con / li_out, 2) if li_out > 0 else 0
         filtered = list(agg.values())
 
     # 3) openpyxl 生成 xlsx
@@ -177,9 +172,7 @@ def api_export_output():
         row_vals = []
         for f in fields:
             v = r.get(f)
-            if f == "ratio_na_li":
-                row_vals.append(round(float(v or 0), 2))
-            elif f == "日期":
+            if f == "日期":
                 row_vals.append(v or "")
             else:
                 row_vals.append(round(float(v or 0), 2))

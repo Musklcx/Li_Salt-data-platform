@@ -7,6 +7,7 @@
   - auth_bp      （auth.py）       登录认证
   - inventory_bp （inventory_bp.py）期末金属量盘点
   - data_bp      （data_bp.py）     数据对比
+  - unitcost_bp  （unitcost_bp.py） 辅料包材单耗
   - hazard_bp    （hazard_bp.py）   30吨蒸发问题汇总
   - notice_bp    （notice_bp.py）   班组工作量（通知公示）
   - staff_bp     （staff_bp.py）    人员概况
@@ -26,6 +27,7 @@ from staff_bp import staff_bp
 from download_bp import download_bp
 from saferisks_bp import saferisks_bp
 from utilities_bp import utilities_bp
+from unitcost_bp import unitcost_bp
 from db import close_db, DB_FILE
 from logs_bp import logs_bp
 from docs_bp import docs_bp
@@ -68,6 +70,7 @@ app.register_blueprint(staff_bp)
 app.register_blueprint(download_bp)
 app.register_blueprint(saferisks_bp)
 app.register_blueprint(utilities_bp)
+app.register_blueprint(unitcost_bp)
 app.register_blueprint(logs_bp)
 app.register_blueprint(docs_bp)
 

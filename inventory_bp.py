@@ -179,12 +179,12 @@ def aggregate_balance(db, month):
             continue
         if end and _date_le(d, end) is False:
             continue
-        w_vol = float(row['投入气浮量白m³'] or 0)
-        w_conc = float(row['气浮含量白g/L'] or 0)
-        n_vol = float(row['投入气浮量夜m³'] or 0)
-        n_conc = float(row['气浮含量夜g/L'] or 0)
-        sale_t = float(row['外卖硫酸锂t'] or 0)
-        sale_pct = float(row['硫酸锂含量%'] or 0)
+        w_vol = float(row['投入气浮量白'] or 0)
+        w_conc = float(row['气浮含量白'] or 0)
+        n_vol = float(row['投入气浮量夜'] or 0)
+        n_conc = float(row['气浮含量夜'] or 0)
+        sale_t = float(row['外卖硫酸锂'] or 0)
+        sale_pct = float(row['硫酸锂含量'] or 0)
         w_m = w_vol * w_conc / 1000
         n_m = n_vol * n_conc / 1000
         li2so4_m = sale_t * sale_pct / 100

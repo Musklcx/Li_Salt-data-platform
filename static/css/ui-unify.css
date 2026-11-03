@@ -196,3 +196,6 @@
     font-size: 14px !important;
     color: #333333 !important;
 }
+
+/* ---------- 6. 顶部导航下拉：当前项高亮（数据对比 / 辅料包材 等子页共用） ---------- */
+.nav-dropdown-menu a.on { background: #2b579a; }

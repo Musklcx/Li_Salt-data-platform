@@ -14,7 +14,8 @@ $(function(){
             {title:"2026年1月103车间生产日报表",file:"/static/file/report/2026年1月103车间生产日报表.xlsx",date:"2026-01-30"},
         ],
         kpi: [
-            {title:"2026年9月103车间绩效考核表",file:"/static/file/kpi/2026年9月103车间绩效考核表.xlsx",date:"2026-08-25",isNew:true},
+            {title:"2026年四季度绩效考核内容表",file:"/static/file/kpi/2026年四季度绩效考核内容表.xlsx",date:"2026-11-01",isNew:true},
+            {title:"2026年9月103车间绩效考核表",file:"/static/file/kpi/2026年9月103车间绩效考核表.xlsx",date:"2026-08-25"},
             {title:"103车间岗位员工绩效汇总表",file:"/static/file/kpi/103车间岗位员工绩效汇总表.xlsx",date:"2026-07-20"},
             {title:"103车间岗位班长绩效汇总表",file:"/static/file/kpi/103车间岗位班长绩效汇总表.xlsx",date:"2026-07-19"},
         ],

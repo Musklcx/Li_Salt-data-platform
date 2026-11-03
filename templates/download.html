@@ -98,7 +98,13 @@
 <body>
     <!-- 顶部导航 -->
     <div class="top-nav">
-        <a href="/data" class="nav-tab">数据对比</a>
+        <div class="nav-tab nav-dropdown">
+            数据对比 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/data">数据对比</a>
+                <a href="/utilities">水电汽消耗</a>
+            </div>
+        </div>
         <div class="nav-tab nav-dropdown">
             现场问题 <span style="font-size:12px;">▼</span>
             <div class="nav-dropdown-menu">
@@ -112,7 +118,7 @@
             <div class="nav-dropdown-menu">
                 <a href="/notice">班组工作量</a>
                 <a href="/inventory">期末金属量</a>
-                <a href="/utilities">水电汽消耗</a>
+                <a href="/unitcost">辅料包材</a>
             </div>
         </div>
         <a href="/staff" class="nav-tab">人员概况</a>

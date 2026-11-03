@@ -354,12 +354,22 @@ function resizeCharts() {
     });
 }
 
-/* ===== 合计电量（派生列，仅用电 + 用量口径）：= 车间总电表 + 60t高压1 + 60t高压2 + 30t高压 ===== */
+/* ===== 合计列（派生列，仅用量口径）：用电=固定4表相加；蒸汽/水=表内单行各列累加 ===== */
 const TOTAL_FIELD = "__total";
-function hasTotalCol() { return currentKey === "elec" && mode === "usage"; }
+const TOTAL_LABELS = { elec: "合计电量", steam: "合计汽量", water: "合计用量" };
+const TOTAL_TIPS = {
+    elec: "合计电量 = 车间总电表 + 60t高压1 + 60t高压2 + 30t高压",
+    steam: "合计汽量 = 碳酸锂汽 + 60t总汽 + 30t总汽 + 沸腾床（等于 车间总蒸汽 + 60t总汽 + 30t总汽）",
+    water: "合计用量 = 自来水 + 工业水"
+};
+function totalColsOf() {
+    if (currentKey === "elec") return ELEC_TOTAL_COLS;   // 用电只加 4 块高压/总表
+    return METRICS[currentKey].cols;                     // 蒸汽/水：表内逐列累加
+}
+function hasTotalCol() { return mode === "usage"; }
 function totalVal(row) {
     let s = 0, any = false;
-    ELEC_TOTAL_COLS.forEach(c => {
+    totalColsOf().forEach(c => {
         const v = cellVal(c, row);
         if (v !== null) { s += v; any = true; }
     });
@@ -378,7 +388,7 @@ function renderTableHeader() {
         html += `<th data-field="${c}" data-sortable="1" title="${tip}">${labelOf(c)}<span class="sort">↕</span></th>`;
     });
     if (hasTotalCol()) {
-        html += `<th data-field="${TOTAL_FIELD}" data-sortable="1" title="合计电量 = 车间总电表 + 60t高压1 + 60t高压2 + 30t高压">合计电量<span class="sort">↕</span></th>`;
+        html += `<th data-field="${TOTAL_FIELD}" data-sortable="1" title="${TOTAL_TIPS[currentKey]}">${TOTAL_LABELS[currentKey]}<span class="sort">↕</span></th>`;
     }
     html += "</tr>";
     headDom.innerHTML = html;

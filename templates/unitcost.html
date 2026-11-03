@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 辅料包材单耗</title>
+
+    <!-- ECharts -->
+    <script src="{{ url_for('static', filename='lib/echarts/echarts.min.js') }}"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homeStyle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dataCompar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/icofont/icofont.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
+
+    <style>
+        /* ============================================================
+           辅料包材单耗
+           风格基线：与 data / utilities 页一致
+             · 顶部导航 红 #e74c3c，其余全部蓝色调 #2b579a
+             · 背景 #f4f7fa，白卡片 + 1px #ececec 描边 + 8px 圆角
+             · 视口内排布，滚动只发生在表格内部
+           ============================================================ */
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 16px;
+            overflow: hidden;
+            background: #f4f7fa;
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            color: #2f353d;
+            font-size: 14px;
+        }
+
+        /* ---------- 顶部导航（红） ---------- */
+        .top-nav { display: flex; gap: 2px; flex: none; flex-wrap: wrap; }
+        .nav-tab {
+            padding: 11px 26px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 15px;
+            display: inline-block;
+            cursor: pointer;
+            position: relative;
+        }
+        .nav-tab.active { background: #e74c3c; color: #fff; }
+        .nav-dropdown { position: relative; }
+        .nav-dropdown:hover .nav-dropdown-menu { display: block; }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 200px;
+            z-index: 999;
+        }
+        .nav-dropdown-menu a { display: block; padding: 12px 20px; color: #fff; text-decoration: none; font-size: 14px; }
+        .nav-dropdown-menu a:hover { background: #666; }
+        .nav-dropdown-menu a.on { background: #2b579a; }
+
+        /* ---------- KPI 卡片 ---------- */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            flex: none;
+        }
+        .kpi-card { background: #fff; border: 1px solid #ececec; border-radius: 8px; padding: 9px 14px; }
+        .kpi-card .kpi-label { font-size: 12.5px; color: #8a8f99; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: baseline; }
+        .kpi-card .kpi-label .u { font-size: 11.5px; color: #b6bcc6; }
+        .kpi-card .kpi-value { font-size: 21px; font-weight: 600; color: #2b579a; line-height: 1.3; font-variant-numeric: tabular-nums; }
+        .kpi-card .kpi-value small { font-size: 12px; font-weight: 400; color: #aab0ba; margin-left: 4px; }
+        .kpi-card .kpi-foot { font-size: 11.5px; color: #8a8f99; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* 计划完成率卡片：两行式（与 data 页一致） */
+        .kpi-card.kpi-plan { background: #eef4fc; border-color: #d6e4f7; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+        .plan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+        .plan-title { font-size: 13px; font-weight: 600; color: #2b579a; white-space: nowrap; }
+        .plan-foot { font-size: 11.5px; color: #7d93b3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .plan-bar-row { display: flex; align-items: center; gap: 10px; }
+        .plan-track { flex: 1; height: 7px; border-radius: 4px; background: #fff; overflow: hidden; }
+        .plan-fill { height: 100%; border-radius: 4px; background: #2b579a; width: 0; }
+        .plan-pct { font-size: 15px; font-weight: 600; color: #2b579a; min-width: 46px; text-align: right; }
+
+        /* ---------- 控制条 ---------- */
+        .top-row {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+            flex: none; background: #fff; border: 1px solid #ececec; border-radius: 8px; padding: 8px 12px;
+        }
+        .top-row .spacer { flex: 1; }
+        .metric-group { display: flex; gap: 6px; }
+        .metric-group > button, .right-group button {
+            padding: 6px 15px; border: 1px solid #2b579a; background: #fff; color: #2b579a;
+            border-radius: 6px; font-size: 13.5px; cursor: pointer; font-family: inherit;
+        }
+        .metric-group > button.active { background: #2b579a; color: #fff; }
+        .right-group { display: flex; align-items: center; gap: 6px; }
+        .right-group button { border-color: #4080ff; color: #4080ff; padding: 6px 12px; }
+        .right-group button.active { background: #2b579a; border-color: #2b579a; color: #fff; }
+        .right-group input[type="month"] {
+            padding: 5px 8px; border: 1px solid #dde0e6; border-radius: 6px; font-size: 13px; color: #444;
+            font-family: inherit; height: 32px;
+        }
+        .vsep { width: 1px; height: 20px; background: #e6eaf0; margin: 0 4px; }
+
+        /* ---------- 主区域：左图右表 ---------- */
+        .page-main {
+            flex: 1; min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.24fr);
+            gap: 12px;
+        }
+        .panel {
+            background: #fff; border: 1px solid #ececec; border-radius: 8px;
+            display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+        }
+        .p-head {
+            display: flex; align-items: center; gap: 10px; flex: none;
+            padding: 9px 14px; border-bottom: 1px solid #f0f2f5;
+        }
+        .p-title { font-size: 14px; font-weight: 600; color: #2f353d; white-space: nowrap; }
+        .p-sub { font-size: 12px; color: #9aa3b0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .p-head .spacer { flex: 1; }
+        .p-body { flex: 1; min-height: 0; position: relative; }
+        .chart-col { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-height: 0; min-width: 0; }
+        .chart { position: absolute; inset: 0; }
+
+        /* ---------- 明细表 ---------- */
+        .table-scroll { flex: 1; min-height: 0; overflow: auto; }
+        table.dt {
+            width: 100%; margin: 0; border-collapse: separate; border-spacing: 0;
+            table-layout: fixed; font-size: 13px;
+        }
+        table.dt thead th {
+            position: sticky; top: 0; z-index: 3;
+            padding: 10px 10px; font-size: 12.5px; font-weight: 600; letter-spacing: .2px;
+            text-align: right; white-space: nowrap; color: #fff;
+            background: #205493; border: 0; border-bottom: 1px solid #1a4275;
+            user-select: none;
+        }
+        table.dt thead th.sortable { cursor: pointer; }
+        table.dt thead th.sortable:hover { background: #2a63b0; }
+        table.dt thead th .sort { color: rgba(255,255,255,.6); font-size: 10.5px; margin-left: 4px; font-weight: 400; }
+        table.dt thead th:first-child { text-align: left; padding-left: 14px; }
+        table.dt tbody td {
+            padding: 9px 8px; text-align: right; white-space: nowrap; overflow: hidden;
+            border-bottom: 1px solid #f3f5f8; font-variant-numeric: tabular-nums; color: #2f353d;
+        }
+        table.dt tbody td:first-child { text-align: left; padding-left: 14px; color: #2f353d; }
+        table.dt tbody tr:nth-child(even) { background: #fcfdff; }
+        table.dt tbody tr:hover { background: #f3f8ff; }
+        /* 分组行 */
+        table.dt tr.grp td {
+            background: #f7f9fc; color: #6b7c93; font-size: 12px; font-weight: 600;
+            text-align: left; padding: 6px 14px; letter-spacing: .3px;
+            border-bottom: 1px solid #eef1f6;
+        }
+        table.dt tr.grp td .hint { font-weight: 400; color: #9aa3b0; margin-left: 8px; }
+        /* 物料名 + 折算基准小字 */
+        .mat-name { font-weight: 600; color: #2f353d; }
+        .mat-base { display: block; font-size: 11px; color: #aab0ba; font-weight: 400; margin-top: 1px; }
+        /* 数值强调 */
+        .v-now { font-weight: 600; color: #2b579a; }
+        .v-qty { color: #4a5361; }
+        .v-qty .un { color: #aab0ba; font-size: 11.5px; margin-left: 2px; }
+        /* 环比 / 较年均 药丸 */
+        .pill {
+            display: inline-block; min-width: 62px; text-align: center;
+            padding: 2px 7px; border-radius: 4px; font-size: 12.5px; font-weight: 600;
+        }
+        .pill.bad { color: #d9483d; background: #fdeeec; }
+        .pill.good { color: #27905f; background: #eaf7f0; }
+        .pill.flat { color: #8a8f99; background: #f2f4f7; }
+        .pill.na { color: #c3c9d2; background: transparent; }
+        /* 状态标签 */
+        .tag { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 11.5px; font-weight: 600; }
+        .tag-ok { background: #eaf7f0; color: #27905f; }
+        .tag-flat { background: #f2f4f7; color: #7c8595; }
+        .tag-warn { background: #fdf5e6; color: #b8802a; }
+        .tag-bad { background: #fdeeec; color: #d9483d; }
+        /* 表底说明条（不滚动） */
+        .tbl-note {
+            flex: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 8px 14px; border-top: 1px solid #f0f2f5; background: #fbfcfe;
+            font-size: 11.5px; color: #9aa3b0; line-height: 1.6;
+        }
+        .tbl-note b { color: #2b579a; font-weight: 600; }
+        .tbl-note .dot { width: 4px; height: 4px; border-radius: 50%; background: #d6dbe3; }
+
+        /* ---------- 右列：明细表 + 数据解读 ---------- */
+        .right-col {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) 214px;
+            gap: 12px; min-height: 0; min-width: 0;
+        }
+        .nar-body { flex: 1; min-height: 0; overflow: auto; padding: 9px 14px 10px; }
+        .nar-sum {
+            font-size: 12.8px; line-height: 1.65; color: #2f353d;
+            padding-bottom: 7px; margin-bottom: 6px; border-bottom: 1px dashed #eef1f6;
+        }
+        .nar-sum b { color: #2b579a; font-weight: 600; }
+        .nar-item {
+            display: flex; gap: 7px; font-size: 12.5px; line-height: 1.6;
+            color: #4a5361; padding: 2.5px 0;
+        }
+        .nar-item .bar { flex: none; width: 3px; border-radius: 2px; background: #d6dbe3; margin: 3px 0; }
+        .nar-item.bad .bar { background: #d9534f; }
+        .nar-item.warn .bar { background: #e0a030; }
+        .nar-item.good .bar { background: #1d9e75; }
+        .nar-item .tx { min-width: 0; }
+        .nar-item b { color: #2f353d; font-weight: 600; }
+        .nar-item .hl-bad { color: #d9483d; font-weight: 600; }
+        .nar-item .hl-good { color: #27905f; font-weight: 600; }
+        .nar-sum .hl-warn { color: #b8802a; }
+        .nar-empty { color: #aab0ba; font-size: 12.5px; line-height: 1.7; padding: 4px 0; }
+
+        /* 空状态 / 加载 */
+        .empty { padding: 40px 0; text-align: center; color: #aab0ba; font-size: 13px; }
+
+        @media (max-width: 1280px) {
+            .page-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+        }
+        @media (max-height: 820px) {
+            body { overflow: auto; }
+            .page-main { grid-template-rows: 500px; height: 500px; flex: none; }
+            .right-col { grid-template-rows: minmax(0, 1fr) 190px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="top-nav">
+    <div class="nav-tab nav-dropdown">
+        数据对比 <span style="font-size:12px;">▼</span>
+        <div class="nav-dropdown-menu">
+            <a href="/data">数据对比</a>
+            <a href="/utilities">水电汽消耗</a>
+        </div>
+    </div>
+    <div class="nav-tab nav-dropdown">
+        现场问题 <span style="font-size:12px;">▼</span>
+        <div class="nav-dropdown-menu">
+            <a href="/hazard">30吨蒸发问题汇总</a>
+            <a href="/saferisks">安全隐患整改</a>
+            <a href="#" onclick="alert('未开发')">车间生产计划</a>
+        </div>
+    </div>
+    <div class="nav-tab nav-dropdown active">
+        信息公示 <span style="font-size:12px;">▼</span>
+        <div class="nav-dropdown-menu">
+            <a href="/notice">班组工作量</a>
+            <a href="/inventory">期末金属量</a>
+            <a href="/unitcost" class="on">辅料包材</a>
+        </div>
+    </div>
+    <a href="/staff" class="nav-tab">人员概况</a>
+    <a href="/download" class="nav-tab">下载专区</a>
+
+    <div class="nav-tab nav-dropdown">
+        系统管理 <span style="font-size:12px;">▼</span>
+        <div class="nav-dropdown-menu">
+            <a href="/users">用户管理</a>
+            <a href="/docs">接口文档</a>
+            <a href="/logs">运行日志</a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI 卡片 -->
+<div class="kpi-row">
+    <div class="kpi-card kpi-plan">
+        <div class="plan-head">
+            <span class="plan-title">本月碳酸锂产量</span>
+            <span class="plan-foot" id="kpiLiFoot">-</span>
+        </div>
+        <div class="plan-bar-row">
+            <div class="plan-track"><div class="plan-fill" id="kpiLiFill"></div></div>
+            <span class="plan-pct" id="kpiLiPct">0%</span>
+        </div>
+    </div>
+    <div class="kpi-card kpi-plan">
+        <div class="plan-head">
+            <span class="plan-title">本月硫酸钠产量</span>
+            <span class="plan-foot" id="kpiNaFoot">-</span>
+        </div>
+        <div class="plan-bar-row">
+            <div class="plan-track"><div class="plan-fill" id="kpiNaFill"></div></div>
+            <span class="plan-pct" id="kpiNaPct">0%</span>
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label"><span>辅料超标项</span><span class="u">较年均 +25%</span></div>
+        <div class="kpi-value"><span id="kpiAuxOver">-</span><small id="kpiAuxOverSmall">/ 5 项</small></div>
+        <div class="kpi-foot" id="kpiAuxOverFoot">-</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label"><span>辅材超标项</span><span class="u">较年均 +25%</span></div>
+        <div class="kpi-value"><span id="kpiMatOver">-</span><small id="kpiMatOverSmall">/ 4 项</small></div>
+        <div class="kpi-foot" id="kpiMatOverFoot">-</div>
+    </div>
+</div>
+
+<!-- 控制条 -->
+<div class="top-row">
+    <div class="metric-group">
+        <button data-view="aux" class="active">辅料</button>
+        <button data-view="mat">辅材</button>
+    </div>
+    <span class="vsep"></span>
+    <div class="right-group">
+        <span style="font-size:12.5px;color:#8a8f99;">统计月份</span>
+        <input type="month" id="monthPick">
+    </div>
+    <span class="spacer"></span>
+    <div class="right-group">
+        <button id="btnLine" class="active">折线图</button>
+        <button id="btnBar">柱状图</button>
+        <button id="btnExport">导出Excel</button>
+    </div>
+</div>
+
+<!-- 主区域：左两图 / 右明细表 -->
+<div class="page-main">
+    <div class="chart-col">
+        <div class="panel">
+            <div class="p-head">
+                <span class="p-title" id="trendTitle">单耗趋势</span>
+                <span class="spacer"></span>
+                <span class="p-sub" id="trendSub">近 12 个月</span>
+            </div>
+            <div class="p-body"><div id="chartTrend" class="chart"></div></div>
+        </div>
+        <div class="panel">
+            <div class="p-head">
+                <span class="p-title">本月单耗较年均偏离</span>
+                <span class="spacer"></span>
+                <span class="p-sub">正值=偏高，负值=偏低</span>
+            </div>
+            <div class="p-body"><div id="chartDev" class="chart"></div></div>
+        </div>
+    </div>
+
+    <div class="right-col">
+    <div class="panel">
+        <div class="p-head">
+            <span class="p-title">单耗明细</span>
+            <span class="p-sub" id="tblSub">—</span>
+            <span class="spacer"></span>
+            <span class="p-sub">红=单耗升高（不利） / 绿=下降</span>
+        </div>
+        <div class="table-scroll">
+            <table class="dt" id="dt">
+                <thead>
+                    <tr>
+                        <th style="width:23%">物料</th>
+                        <th style="width:13%">本月消耗量</th>
+                        <th style="width:10%" class="sortable" data-sort="now">本月单耗<span class="sort">↕</span></th>
+                        <th style="width:9%">上月单耗</th>
+                        <th style="width:10%" class="sortable" data-sort="mom">环比<span class="sort">↕</span></th>
+                        <th style="width:11%" title="本年累计消耗 ÷ 本年累计产量（加权），仅统计有数据的月份">年均单耗 ⓘ</th>
+                        <th style="width:10%" class="sortable" data-sort="dev">较年均<span class="sort">↕</span></th>
+                        <th style="width:8%">近6月</th>
+                        <th style="width:7%">状态</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody">
+                    <tr><td colspan="9" class="empty">加载中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="tbl-note" id="tblNote"></div>
+    </div>
+
+    <!-- 数据解读：模板化文字分析，数字与上表同源 -->
+    <div class="panel">
+        <div class="p-head">
+            <span class="p-title">数据解读</span>
+            <span class="p-sub" id="narSub">—</span>
+            <span class="spacer"></span>
+            <span class="p-sub">基准：同年加权年均</span>
+        </div>
+        <div class="nar-body" id="narBody"><div class="nar-empty">加载中…</div></div>
+    </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static',filename='assets/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/request.js') }}"></script>
+<script src="{{ url_for('static', filename='js/echarts-theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js02/unitcostScr.js') }}"></script>
+<script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
+</body>
+</html>

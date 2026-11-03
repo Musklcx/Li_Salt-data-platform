@@ -56,8 +56,7 @@ const seriesConfig = {
     ],
     sodiumCarbonate: [
         { field: "碳酸钠车间消耗", name: "碳酸钠车间消耗" },
-        { field: "碳酸钠仓库出库", name: "碳酸钠仓库出库" },
-        { field: "ratio_na_li", name: "碳酸钠/碳酸锂消耗比", isRatio: true }
+        { field: "碳酸钠仓库出库", name: "碳酸钠仓库出库" }
     ],
     drain: [
         { field: "外排水量", name: "外排水量" }
@@ -366,20 +365,6 @@ function render() {
     const eDate = document.getElementById("endDate").value;
     let data = filterByDate(rawAllData, sDate, eDate);
 
-    // 给每行预先计算：碳酸钠车间消耗 / 碳酸锂车间产出
-    data = data.map(d => {
-        const naConsume = Number(d["碳酸钠车间消耗"] || 0);
-        const liOutput = Number(d["碳酸锂车间产出"] || 0);
-        let ratio = 0;
-        if (liOutput > 0) {
-            ratio = naConsume / liOutput;
-        }
-        return {
-            ...d,
-            ratio_na_li: parseFloat(ratio.toFixed(2))
-        }
-    })
-
     if (granularity === "month") {
         data = groupByMonth(data);
     }
@@ -410,11 +395,6 @@ function render() {
             ser.smooth = true;
             ser.areaStyle = { opacity: 0.15 };
         }
-        // 如果是比例曲线，使用右侧Y轴
-        if (cfg.isRatio) {
-            ser.yAxisIndex = 1;
-            if (isStack) { ser.type = "line"; delete ser.stack; } // 比例曲线不参与堆叠
-        }
         return ser;
     });
 
@@ -442,10 +422,7 @@ function render() {
         },
         legend: { show: true, top: 0 },
         xAxis: { type: "category", data: xAxisData, boundaryGap: chartType !== "line", axisLabel: { fontSize: 11 } },
-        yAxis: [
-            { type: "value", name: "产量/消耗", splitLine: { lineStyle: { color: "#eef1f5" } } },
-            { type: "value", name: "比值", position: "right", splitLine: { show: false } }
-        ],
+        yAxis: { type: "value", name: "产量/消耗", splitLine: { lineStyle: { color: "#eef1f5" } } },
         dataZoom: [
             { type: "slider", show: true, height: 20, bottom: 10, start: 0, end: 100 }
         ],

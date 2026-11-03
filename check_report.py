@@ -19,6 +19,7 @@ import argparse
 import datetime
 import logging
 import os
+import re
 import sqlite3
 import sys
 
@@ -72,17 +73,34 @@ def fmt_num(v):
     return round(f, 2)
 
 
+def parse_date(s):
+    """宽松解析日期：'2026/11/1' '2026/11/01' '2026-11-1' '2026年11月1日' → date"""
+    m = re.match(r"\s*(\d{4})\D+(\d{1,2})\D+(\d{1,2})", str(s or "").strip())
+    if not m:
+        return None
+    try:
+        return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return None
+
+
 def load_day_rows(date_str):
-    """读某数据日全部班组记录，返回 list[dict]"""
+    """读某数据日全部班组记录，返回 list[dict]
+
+    库里日期是人工录入的文本（2026/11/1，月/日不补零），
+    因此不能用「格式化后的字符串 = 精确匹配」，必须按解析后的真实日期比对，
+    否则 strftime 生成的 2026/11/01 永远查不到 2026/11/1 的记录。
+    """
+    target = parse_date(date_str)
+    if target is None:
+        return []
     conn = sqlite3.connect(DB_FILE, timeout=10)
     try:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
-        cur = conn.execute(
-            "SELECT * FROM data_103 WHERE 日期 = ? ORDER BY 班组", [date_str]
-        )
-        return [dict(r) for r in cur.fetchall()]
+        rows = conn.execute("SELECT * FROM data_103 ORDER BY 班组").fetchall()
+        return [dict(r) for r in rows if parse_date(r["日期"]) == target]
     finally:
         conn.close()
 
