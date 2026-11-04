@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>锂盐车间共享平台 - 水电汽消耗</title>
+    <title>锂盐车间共享平台 - 水电汽耗</title>
 
     <!-- ECharts -->
     <script src="{{ url_for('static', filename='lib/echarts/echarts.min.js') }}"></script>
@@ -274,7 +274,7 @@
             数据对比 <span style="font-size:12px;">▼</span>
             <div class="nav-dropdown-menu">
                 <a href="/data">数据对比</a>
-                <a href="/utilities" class="on">水电汽消耗</a>
+                <a href="/utilities" class="on">水电汽耗</a>
             </div>
         </div>
         <div class="nav-tab nav-dropdown">
@@ -322,7 +322,8 @@
         </div>
         <div class="kpi-card" id="kpiUnitCard" style="display:none;">
             <div class="kpi-label" id="kpiUnitLabel">吨锂电耗</div>
-            <div class="kpi-value"><span id="kpiUnitValue">-</span><small id="kpiUnitSmall">kWh/t</small></div>
+            <div class="kpi-value" id="kpiUnitMainRow"><span id="kpiUnitValue">-</span><small id="kpiUnitSmall">kWh/t</small></div>
+            <div class="kpi-value" id="kpiUnitInlineRow" style="display:none; font-size:15.5px;">合计：<span id="kpiSumWater">-</span><small>m³</small>、制水率：<span id="kpiRateWater">-</span><small>%</small></div>
         </div>
     </div>
 

@@ -3,10 +3,12 @@
 数据对比蓝图
 ------------
 - 页面：/data
-- 接口：/api/output/all（data_103 按日聚合）、/api/plan/get（月度计划）
+- 接口：/api/output/all（data_103 按日聚合 + balance 外卖硫酸锂）、/api/plan/get（月度计划）
 - 导出：/api/export/output（Excel，openpyxl 生成 xlsx）
-数据访问统一走 db.py（主库 db_day.db）
+数据访问统一走 db.py（主库 db_day.db）；外卖硫酸锂来自 db_balance.db 的 balance 表（1 天 1 行）
 """
+import os
+import sqlite3
 from datetime import datetime
 from io import BytesIO
 from flask import Blueprint, request, render_template, send_file
@@ -15,6 +17,31 @@ from db import query, fetchone
 from resp import ok
 
 data_bp = Blueprint('data', __name__)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BALANCE_DB = os.path.join(BASE_DIR, 'data', 'db_balance.db')
+
+
+def load_sale_lithium_map():
+    """balance 表外卖硫酸锂 → {datetime: float}（1 天 1 行，按真实日期对齐 data_103）"""
+    out = {}
+    try:
+        con = sqlite3.connect(BALANCE_DB, timeout=10)
+        con.row_factory = sqlite3.Row
+        try:
+            for r in con.execute("SELECT [日期], [外卖硫酸锂] FROM [balance]"):
+                dt = parse_raw_date(r["日期"])
+                if dt is None:
+                    continue
+                try:
+                    out[dt] = float(r["外卖硫酸锂"] or 0)
+                except (TypeError, ValueError):
+                    out[dt] = 0.0
+        finally:
+            con.close()
+    except sqlite3.Error:
+        pass  # db_balance.db 不可用时外卖硫酸锂按 0 处理，不影响其他指标
+    return out
 
 
 def format_date(s):
@@ -57,7 +84,8 @@ def api_all():
 
 
 def get_all_rows():
-    """日聚合数据（与前端 dataScr.js 的原始数据一致，已排序、日期格式 2026/09/01）"""
+    """日聚合数据（与前端 dataScr.js 的原始数据一致，已排序、日期格式 2026/09/01）
+    外卖硫酸锂来自 db_balance.db 的 balance 表，按日期对齐并入 data_103 行"""
     rows = query('''
     SELECT
     日期 AS raw_date,
@@ -74,6 +102,8 @@ def get_all_rows():
     FROM data_103
     GROUP BY raw_date
     ''')
+
+    sale_map = load_sale_lithium_map()
 
     temp = []
     for d in rows:
@@ -97,7 +127,8 @@ def get_all_rows():
             "硫酸钠落地料": raw_row["硫酸钠落地料"],
             "碳酸钠车间消耗": raw_row["碳酸钠车间消耗"],
             "碳酸钠仓库出库": raw_row["碳酸钠仓库出库"],
-            "外排水量": raw_row["外排水量"]
+            "外排水量": raw_row["外排水量"],
+            "外卖硫酸锂": sale_map.get(item["dt_obj"], 0)
         }
         res.append(out)
     return res
@@ -113,6 +144,8 @@ EXPORT_COLUMNS = {
                         ["日期", "碳酸钠车间消耗", "碳酸钠仓库出库"]),
     "drain": (["日期", "外排水量"],
               ["日期", "外排水量"]),
+    "lithiumSale": (["日期", "外卖硫酸锂"],
+                    ["日期", "外卖硫酸锂"]),
 }
 
 

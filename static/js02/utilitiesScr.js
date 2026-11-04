@@ -1,5 +1,5 @@
 /* ============================================================
-   水电汽消耗页面脚本
+   水电汽耗页面脚本
    ------------------------------------------------------------
    数据口径：14 列均为累计表底读数（底数），0 = 未抄表。
    - 库里存原始底数；插值只在展示层做：
@@ -22,7 +22,15 @@ const ELEC_TOTAL_COLS = ["车间总电表", "60t高压电表1", "60t高压电表
 /* 合计汽量 = 车间总蒸汽 + 60t总蒸汽 + 30t总蒸汽 */
 const STEAM_TOTAL_COLS = ["车间总蒸汽", "60t总蒸汽", "30t总蒸汽"];
 
-/* 吨锂X耗卡片标签（电/汽/水同一算法：区间合计用量 ÷ 区间碳酸锂金属量） */
+/* 合计用量 = 自来水 + 工业水 + 工业水消耗（纯水产出是产出，不计入消耗合计） */
+const WATER_TOTAL_COLS = ["自来水", "工业水", "工业水消耗"];
+
+/* 日量列：来自 data_103 的当日量（纯水产出 / 工业水消耗），不是表底读数
+   → 不插值、不乘倍率；「表底读数」口径下不展示（没有读数可看） */
+const DAILY_COLS = new Set(["纯水产出", "工业水消耗"]);
+
+/* 吨锂X耗卡片标签（电/汽/水同一算法：区间合计用量 ÷ 区间碳酸锂金属量）
+   注：用水 tab 的这张卡改为显示「制水率」，见 renderKpiCards */
 const UNIT_NAMES = { elec: "吨锂电耗", steam: "吨锂汽耗", water: "吨锂水耗" };
 
 const METRICS = {
@@ -41,8 +49,8 @@ const METRICS = {
     },
     water: {
         name: "用水", unit: "m³",
-        cols: ["自来水", "工业水"],
-        groups: [{ title: "用水趋势", cols: ["自来水", "工业水"] }]
+        cols: ["自来水", "工业水", "纯水产出", "工业水消耗"],
+        groups: [{ title: "用水趋势", cols: ["自来水", "工业水", "纯水产出", "工业水消耗"] }]
     }
 };
 
@@ -60,12 +68,15 @@ const LABELS = {
     "30t高压电表": "30t高压", "沸腾床电表": "沸腾床", "60t低压电表": "60t低压",
     "30t低压电表": "30t低压", "104总电表": "104总表",
     "车间总蒸汽": "碳酸锂汽", "60t总蒸汽": "60t总汽", "30t总蒸汽": "30t总汽",
-    "沸腾床蒸汽": "沸腾床", "自来水": "自来水", "工业水": "工业水"
+    "沸腾床蒸汽": "沸腾床", "自来水": "自来水", "工业水": "工业水",
+    "纯水产出": "纯水产出", "工业水消耗": "工业水消耗"
 };
 /* 派生列的表头悬停说明 */
 const DERIVED_TIP = {
     "__total": "合计电量 = 车间总电表 + 60t高压1 + 60t高压2 + 30t高压",
-    "车间总蒸汽": "碳酸锂汽 = 车间总蒸汽 − 沸腾床蒸汽"
+    "车间总蒸汽": "碳酸锂汽 = 车间总蒸汽 − 沸腾床蒸汽",
+    "纯水产出": "纯水产出：当日量（data_103 三个班组相加），不是表底读数",
+    "工业水消耗": "工业水消耗：当日量（data_103 三个班组相加），不是表底读数"
 };
 const labelOf = c => LABELS[c] || c;
 const ratioOf = c => RATIO[c] || 1;
@@ -97,6 +108,13 @@ function computeDerived() {
     EFF = {}; USAGE = {}; EST = {};
     for (const k of Object.keys(METRICS)) {
         METRICS[k].cols.forEach(col => {
+            if (DAILY_COLS.has(col)) {
+                // 日量列：库里已是当日合计，没有底数可插值，也不乘倍率
+                EFF[col] = rawAllData.map(() => null);
+                EST[col] = rawAllData.map(() => false);
+                USAGE[col] = rawAllData.map(r => Number(r[col] || 0));
+                return;
+            }
             const raw = rawAllData.map(r => Number(r[col] || 0));
             const eff = raw.slice(), est = raw.map(() => false);
             const first = raw.findIndex(v => v > 0);
@@ -156,7 +174,9 @@ function filterByDate(list, startStr, endStr) {
 function buildView() {
     const sDate = document.getElementById("startDate").value;
     const eDate = document.getElementById("endDate").value;
-    const pairs = filterByDate(rawAllData, sDate, eDate);
+    // _waterOnly：只有用水日记录、balance 尚未抄表的日期，只在用水 tab 显示
+    const pairs = filterByDate(rawAllData, sDate, eDate)
+        .filter(([r]) => currentKey === "water" || !r["_waterOnly"]);
 
     if (granularity === "day") {
         viewRows = pairs.map(([r, i]) => ({ 日期: r["日期"], _idx: i }));
@@ -180,7 +200,13 @@ function buildView() {
 }
 
 /* ===== 单元格取值 ===== */
+/* 当前口径下要展示的列：日量列在「表底读数」口径下没有意义，不显示 */
+function visibleCols() {
+    const cols = METRICS[currentKey].cols;
+    return mode === "usage" ? cols : cols.filter(c => !DAILY_COLS.has(c));
+}
 function cellValRaw(col, row) {
+    if (DAILY_COLS.has(col) && mode !== "usage") return null;   // 日量列无表底读数
     if (granularity === "month") {
         return mode === "usage" ? (row.usage[col] !== undefined ? row.usage[col] : null) : EFF[col][row._lastIdx];
     }
@@ -210,26 +236,29 @@ function renderKpiCards() {
     const fmt = v => Number(v || 0).toFixed(2);
     const isElec = currentKey === "elec";
     const isSteam = currentKey === "steam";
-    // 用电=合计电量口径；蒸汽=合计汽量口径；用水逐表相加
-    const totalCols = isElec ? ELEC_TOTAL_COLS : (isSteam ? STEAM_TOTAL_COLS : m.cols);
+    // 用电=合计电量口径；蒸汽=合计汽量口径；用水=三路消耗相加（纯水产出是产出，不计入）
+    const totalCols = isElec ? ELEC_TOTAL_COLS : (isSteam ? STEAM_TOTAL_COLS : (currentKey === "water" ? WATER_TOTAL_COLS : m.cols));
     $("kpiRange").innerText = `${$("startDate").value} ~ ${$("endDate").value}`;
     $("curMetricName").innerText = m.name;
     $("kpiSumUnit").innerText = m.unit;
     $("kpiLastUnit").innerText = m.unit;
 
     const isUsage = mode === "usage";
-    $("kpiSumLabel").innerText = isUsage ? (isElec ? "合计电量" : (isSteam ? "合计汽量" : "各表合计用量")) : "最新读数合计（仅参考）";
+    $("kpiSumLabel").innerText = isUsage ? (isElec ? "合计电量" : (isSteam ? "合计汽量" : "合计用量")) : "最新读数合计（仅参考）";
     $("kpiSumLabel").title = isElec
         ? "合计电量 = 车间总电表 + 60t高压1 + 60t高压2 + 30t高压"
         : (isSteam
             ? "合计汽量 = 车间总蒸汽 + 60t总蒸汽 + 30t总蒸汽"
-            : "逐表相加");
+            : "合计用量 = 自来水 + 工业水 + 工业水消耗");
 
     if (viewRows.length === 0) {
         $("kpiSumValue").innerText = "0.00";
         $("kpiLastValue").innerText = "-";
         $("kpiUnitCard").style.display = "block";
-        $("kpiUnitLabel").innerText = UNIT_NAMES[currentKey];
+        $("kpiUnitInlineRow").style.display = "none";
+        const isWater = currentKey === "water";
+        $("kpiUnitLabel").innerText = isWater ? "合计制水 / 制水率" : UNIT_NAMES[currentKey];
+        $("kpiUnitSmall").innerText = isWater ? "m³" : m.unit + "/t";
         $("kpiUnitValue").innerText = "-";
         return;
     }
@@ -254,9 +283,28 @@ function renderKpiCards() {
         : (granularity === "day" ? `最近一日（${lastRow.日期}）` : `${lastRow.日期} 底数`);
     $("kpiLastValue").innerText = fmt(lastTotal);
 
-    // 吨锂X耗（电/汽/水同算法）：区间合计用量 ÷ 区间碳酸锂金属量
-    // 分子与 KPI 合计同口径：用电=合计电量、汽=合计汽量（原表总汽，含沸腾床）、水=两路水相加
+    // 第 4 张卡：用水 tab = 横排一行「合计：xx m³、制水率：xx %」；电/汽 = 吨锂X耗（单行）
     $("kpiUnitCard").style.display = "block";
+    $("kpiUnitMainRow").style.display = "";    // 默认行（电/汽）
+    $("kpiUnitInlineRow").style.display = "none"; // 横排行（仅用水 tab）
+    if (currentKey === "water") {
+        // 纯水产出 / 工业水消耗 都是当日量，区间内直接累加
+        $("kpiUnitLabel").innerText = "合计制水 / 制水率";
+        $("kpiUnitCard").title = "合计 = 区间纯水产出合计；制水率 = 区间纯水产出 ÷ 区间工业水消耗";
+        let pure = 0, ind = 0;
+        filterByDate(rawAllData, $("startDate").value, $("endDate").value).forEach(([r, i]) => {
+            pure += USAGE["纯水产出"][i] || 0;
+            ind += USAGE["工业水消耗"][i] || 0;
+        });
+        $("kpiUnitMainRow").style.display = "none";
+        $("kpiUnitInlineRow").style.display = "";
+        $("kpiSumWater").innerText = fmt(pure);
+        $("kpiRateWater").innerText = ind > 0 ? (pure / ind * 100).toFixed(1) : "-";
+        return;
+    }
+
+    // 吨锂X耗（电/汽同算法）：区间合计用量 ÷ 区间碳酸锂金属量
+    // 分子与 KPI 合计同口径：用电=合计电量、汽=合计汽量（原表总汽，含沸腾床）
     $("kpiUnitLabel").innerText = UNIT_NAMES[currentKey];
     $("kpiUnitSmall").innerText = m.unit + "/t";
     $("kpiUnitCard").title = `区间${$("kpiSumLabel").innerText} ÷ 区间碳酸锂金属量`;
@@ -290,14 +338,17 @@ function renderChart() {
         panel.style.display = shown ? "" : "none";
         if (!shown || !chart) return;
 
+        // 表底读数口径下日量列无意义，不画
+        const cols = mode === "usage" ? g.cols : g.cols.filter(c => !DAILY_COLS.has(c));
+
         // 短名 → 全名（tooltip 里显示完整表名）
         const FULL = {};
-        g.cols.forEach(c => FULL[labelOf(c)] = c);
+        cols.forEach(c => FULL[labelOf(c)] = c);
 
-        const ratioCols = g.cols.filter(c => ratioOf(c) !== 1);
+        const ratioCols = cols.filter(c => ratioOf(c) !== 1);
         const ratioText = ratioCols.length ? "（已乘倍率：" + ratioCols.map(c => labelOf(c) + "×" + ratioOf(c)).join("、") + "）" : "";
 
-        const seriesList = g.cols.map(col => {
+        const seriesList = cols.map(col => {
             const colorIdx = m.cols.indexOf(col);   // 全局配色：同一块表在任何图里颜色一致
             const ser = {
                 name: labelOf(col),
@@ -328,7 +379,7 @@ function renderChart() {
                         html += `${p.marker}${FULL[p.seriesName] || p.seriesName}：${txt}<br/>`;
                     });
                     if (mode === "usage") {
-                        html += `<span style="color:#9aa3b0;font-size:12px;">0 = 未抄表，已按前后底数插值均摊（标*处）</span>`;
+                        html += `<span style="color:#9aa3b0;font-size:12px;">0 = 未抄表/未录入，漏抄底数已按前后插值均摊（标*处）</span>`;
                     }
                     return html;
                 }
@@ -341,6 +392,14 @@ function renderChart() {
             grid: { left: 10, right: 20, top: 28, bottom: 42, containLabel: true }
         };
         chart.setOption(option, true);
+    });
+
+    // 单图指标（蒸汽/用水）：把多出来的图面板隐藏，否则从用电切过来会留一个空面板
+    [1, 2].forEach(idx => {
+        if (idx > m.groups.length) {
+            const p = document.getElementById("chartPanel" + idx);
+            if (p) p.style.display = "none";
+        }
     });
 
     resizeCharts();
@@ -360,11 +419,12 @@ const TOTAL_LABELS = { elec: "合计电量", steam: "合计汽量", water: "合�
 const TOTAL_TIPS = {
     elec: "合计电量 = 车间总电表 + 60t高压1 + 60t高压2 + 30t高压",
     steam: "合计汽量 = 碳酸锂汽 + 60t总汽 + 30t总汽 + 沸腾床（等于 车间总蒸汽 + 60t总汽 + 30t总汽）",
-    water: "合计用量 = 自来水 + 工业水"
+    water: "合计用量 = 自来水 + 工业水 + 工业水消耗"
 };
 function totalColsOf() {
     if (currentKey === "elec") return ELEC_TOTAL_COLS;   // 用电只加 4 块高压/总表
-    return METRICS[currentKey].cols;                     // 蒸汽/水：表内逐列累加
+    if (currentKey === "water") return WATER_TOTAL_COLS; // 用水三路相加（纯水产出是产出，不计入）
+    return METRICS[currentKey].cols;                     // 蒸汽：表内逐列累加
 }
 function hasTotalCol() { return mode === "usage"; }
 function totalVal(row) {
@@ -379,7 +439,7 @@ function cellValEx(field, row) { return field === TOTAL_FIELD ? totalVal(row) : 
 
 /* ===== 表格 ===== */
 function renderTableHeader() {
-    const cols = METRICS[currentKey].cols;
+    const cols = visibleCols();
     const headDom = document.getElementById("tableHead");
     document.getElementById("dataTable").dataset.cols = cols.length + 1 + (hasTotalCol() ? 1 : 0);
     let html = `<tr><th data-field="日期" data-sortable="1">日期<span class="sort">↕</span></th>`;
@@ -404,7 +464,7 @@ function renderTableHeader() {
 }
 
 function renderTable() {
-    const cols = METRICS[currentKey].cols;
+    const cols = visibleCols();
     const tb = document.getElementById("tableBody");
     const tf = document.getElementById("tableFoot");
 
@@ -483,6 +543,14 @@ function render() {
 
 /* ===== 初始化 ===== */
 window.addEventListener('DOMContentLoaded', () => {
+    // 支持 ?metric=elec|steam|water 直接打开指定指标（默认用电）
+    const urlKey = new URLSearchParams(location.search).get("metric");
+    if (urlKey && METRICS[urlKey]) {
+        currentKey = urlKey;
+        document.querySelectorAll(".metric-group button").forEach(b =>
+            b.classList.toggle("active", b.getAttribute("data-key") === urlKey));
+    }
+
     charts.c1 = initChart(document.getElementById("chart1"));
     charts.c2 = initChart(document.getElementById("chart2"));
 

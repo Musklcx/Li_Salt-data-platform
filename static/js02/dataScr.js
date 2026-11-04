@@ -10,6 +10,7 @@ const keyNameMap = {
     lithium: "碳酸锂",
     sodiumSulfate: "硫酸钠",
     sodiumCarbonate: "碳酸钠",
+    lithiumSale: "硫酸锂",
     drain: "外排水"
 };
 
@@ -36,6 +37,10 @@ const tableLayoutMap = {
         { title: "碳酸钠仓库出库", field: "碳酸钠仓库出库" },
         { title: "当日差值", field: "diff", isDiff: true }
     ],
+    lithiumSale: [
+        { title: "日期", field: "日期" },
+        { title: "外卖硫酸锂", field: "外卖硫酸锂" }
+    ],
     drain: [
         { title: "日期", field: "日期" },
         { title: "外排水量", field: "外排水量" }
@@ -58,6 +63,9 @@ const seriesConfig = {
         { field: "碳酸钠车间消耗", name: "碳酸钠车间消耗" },
         { field: "碳酸钠仓库出库", name: "碳酸钠仓库出库" }
     ],
+    lithiumSale: [
+        { field: "外卖硫酸锂", name: "外卖硫酸锂" }
+    ],
     drain: [
         { field: "外排水量", name: "外排水量" }
     ]
@@ -68,6 +76,7 @@ const diffRule = {
     lithium: r => Number(r["碳酸锂仓库出库"] || 0) - Number(r["碳酸锂车间产出"] || 0),
     sodiumCarbonate: r => Number(r["碳酸钠仓库出库"] || 0) - Number(r["碳酸钠车间消耗"] || 0),
     sodiumSulfate: r => Number(r["硫酸钠"] || 0) - (Number(r["硫酸钠干料"] || 0) + Number(r["硫酸钠湿料"] || 0) + Number(r["硫酸钠杂质料"] || 0) + Number(r["硫酸钠落地料"] || 0)),
+    lithiumSale: null,
     drain: null
 };
 
@@ -134,11 +143,12 @@ function groupByMonth(list) {
                 "硫酸钠落地料": 0,
                 "碳酸钠车间消耗": 0,
                 "碳酸钠仓库出库": 0,
+                "外卖硫酸锂": 0,
                 "外排水量": 0
             }
         }
         for (const f of ["碳酸锂仓库出库", "碳酸锂车间产出", "硫酸钠", "硫酸钠干料", "硫酸钠湿料",
-            "硫酸钠杂质料", "硫酸钠落地料", "碳酸钠车间消耗", "碳酸钠仓库出库", "外排水量"]) {
+            "硫酸钠杂质料", "硫酸钠落地料", "碳酸钠车间消耗", "碳酸钠仓库出库", "外卖硫酸锂", "外排水量"]) {
             map[y][f] += Number(row[f] || 0);
         }
     })
@@ -166,6 +176,14 @@ function renderKpiCards(data) {
         // 外排水：只显示总值
         $("kpiALabel").innerText = "外排水量总值";
         $("kpiAValue").innerHTML = fmt(sum("外排水量")) + "<small>t</small>";
+        $("kpiACard").style.display = "block";
+        return;
+    }
+
+    if (currentKey === "lithiumSale") {
+        // 硫锂（外卖硫酸锂）：只显示总值
+        $("kpiALabel").innerText = "外卖硫酸锂合计";
+        $("kpiAValue").innerHTML = fmt(sum("外卖硫酸锂")) + "<small>t</small>";
         $("kpiACard").style.display = "block";
         return;
     }
@@ -349,7 +367,7 @@ function renderTable() {
 
 function render() {
     // 卡片标题随指标/粒度联动
-    const units = { lithium: "t", sodiumSulfate: "t", sodiumCarbonate: "t", drain: "m³" };
+    const units = { lithium: "t", sodiumSulfate: "t", sodiumCarbonate: "t", lithiumSale: "t", drain: "m³" };
     document.getElementById("chartTitle").innerText = keyNameMap[currentKey] + "趋势";
     document.getElementById("chartSub").innerText =
         (granularity === "month" ? "按月" : "按日") + " · 单位 " + (units[currentKey] || "t");
@@ -434,6 +452,14 @@ function render() {
 
 //页面初始化
 window.addEventListener('DOMContentLoaded', () => {
+    // 支持 ?metric=lithium|sodiumSulfate|sodiumCarbonate|lithiumSale|drain 直接打开指定指标（默认碳酸锂）
+    const urlKey = new URLSearchParams(location.search).get("metric");
+    if (urlKey && keyNameMap[urlKey]) {
+        currentKey = urlKey;
+        document.querySelectorAll(".metric-group button").forEach(b =>
+            b.classList.toggle("active", b.getAttribute("data-key") === urlKey));
+    }
+
     window.myChart = initChart(document.getElementById("chart"));
 
     // 卡片高度随 KPI 行/窗口变化，用 ResizeObserver 保证图表跟着缩放

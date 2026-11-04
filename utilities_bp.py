@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-水电汽消耗蓝图
+水电汽耗蓝图
 --------------
 - 库：data/db_balance.db（balance 表：1 天 1 行，含 14 个水电汽底数列）
+      data/db_day.db（data_103：纯水产出 / 工业水消耗，1 天 3 个班组行，按日相加后使用）
 - 页面：/utilities
 - 接口：/api/utilities/all（日底数全量）、/api/export/utilities（Excel 导出）
 - 口径：14 列均为累计表底读数（底数）。0 = 未抄表。
   日用量 = （当日有效底数 − 前日有效底数）× 电表倍率；两个有效底数之间的漏抄日按线性插值均摊，
   首个有效底数日无前值（用量为空）。插值不影响合计（合计只取决于首尾真实底数）。
+  纯水产出 / 工业水消耗 是当日量（非底数），按天累加 3 个班组后直接使用，不插值、不乘倍率。
   电表倍率见 COL_RATIO：车间总表 / 60t高压1·2 为 ×4000，30t高压 ×40，其余 ×1；
   蒸汽与水的表本身就是计量单位，倍率为 1。
 """
@@ -22,6 +24,8 @@ utilities_bp = Blueprint('utilities', __name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'data', 'db_balance.db')
+# 纯水产出 / 工业水消耗 两列在 db_day.db 的 data_103（1 天 3 个班组行），是「当日量」不是底数
+DAY_DB_PATH = os.path.join(BASE_DIR, 'data', 'db_day.db')
 
 # 14 个水电汽底数列（与 balance 表列名一致）
 ELEC_COLS = ["车间总电表", "60t高压电表1", "60t高压电表2", "30t高压电表",
@@ -29,6 +33,9 @@ ELEC_COLS = ["车间总电表", "60t高压电表1", "60t高压电表2", "30t高�
 STEAM_COLS = ["车间总蒸汽", "60t总蒸汽", "30t总蒸汽", "沸腾床蒸汽"]
 WATER_COLS = ["自来水", "工业水"]
 ALL_COLS = ELEC_COLS + STEAM_COLS + WATER_COLS
+
+# 用水 tab 额外两列：来自 data_103 的当日量（按天把 3 个班组相加），不插值、不乘倍率
+DAILY_WATER_COLS = ["纯水产出", "工业水消耗"]
 
 # 电表倍率：表上读数 × 倍率 = 实际电量（kWh）
 # 库里存的是表上原始读数，倍率只在“读数差 → 用量”这一步乘进去，
@@ -47,7 +54,7 @@ COL_RATIO = {
 METRICS = {
     "elec":  {"name": "用电", "unit": "kWh", "cols": ELEC_COLS},
     "steam": {"name": "蒸汽", "unit": "t",   "cols": STEAM_COLS},
-    "water": {"name": "用水", "unit": "m³",  "cols": WATER_COLS},
+    "water": {"name": "用水", "unit": "m³",  "cols": WATER_COLS + DAILY_WATER_COLS},
 }
 
 
@@ -75,13 +82,44 @@ def parse_date(s):
         return None
 
 
+def load_daily_water():
+    """data_103 按日汇总（1 天 3 个班组行）：纯水产出 / 工业水消耗 直接是当日量。
+    返回 {YYYY/MM/DD: {"纯水产出": x, "工业水消耗": y}}；db_day.db 不存在时返回空。"""
+    if not os.path.exists(DAY_DB_PATH):
+        return {}
+    try:
+        con = sqlite3.connect(f"file:{DAY_DB_PATH}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return {}
+    out = {}
+    try:
+        for d, pure, ind in con.execute(
+                "SELECT [日期],[纯水产出],[工业水消耗] FROM [data_103]"):
+            dt = parse_date(d)
+            if dt is None:
+                continue
+            k = dt.strftime("%Y/%m/%d")
+            cur = out.setdefault(k, {"纯水产出": 0.0, "工业水消耗": 0.0})
+            cur["纯水产出"] += float(pure or 0)
+            cur["工业水消耗"] += float(ind or 0)
+    except sqlite3.Error:
+        return {}
+    finally:
+        con.close()
+    return out
+
+
 def load_rows():
-    """全量日记录：日期格式化为 YYYY/MM/DD，14 列数值化（NULL→0），按真实日期排序"""
+    """全量日记录：日期格式化为 YYYY/MM/DD，14 列数值化（NULL→0），按真实日期排序。
+    同时把 data_103 的纯水产出/工业水消耗按日期并入；只有用水记录、还没抄表的日期补一行
+    （其余列 0），否则刚录的用水数据在页面上看不到。"""
     cols_sql = ",".join(f"[{c}]" for c in ALL_COLS)
     rows = get_db().execute(
         f"SELECT [日期],[碳酸锂金属量],{cols_sql} FROM [balance]"
     ).fetchall()
+    daily = load_daily_water()
     out = []
+    seen = set()
     for r in rows:
         d = parse_date(r["日期"])
         if d is None:
@@ -89,6 +127,23 @@ def load_rows():
         item = {"日期": d.strftime("%Y/%m/%d"), "碳酸锂金属量": float(r["碳酸锂金属量"] or 0)}
         for c in ALL_COLS:
             item[c] = float(r[c] if r[c] is not None else 0)
+        w = daily.get(item["日期"])
+        for c in DAILY_WATER_COLS:
+            item[c] = float(w.get(c, 0.0)) if w else 0.0
+        seen.add(item["日期"])
+        out.append((d, item))
+    # 用水有记录但 balance 尚无该日的行：补一条（抄表列留 0）
+    for k, w in daily.items():
+        if k in seen:
+            continue
+        d = parse_date(k)
+        if d is None or (w["纯水产出"] == 0 and w["工业水消耗"] == 0):
+            continue
+        item = {"日期": k, "碳酸锂金属量": 0.0, "_waterOnly": True}
+        for c in ALL_COLS:
+            item[c] = 0.0
+        for c in DAILY_WATER_COLS:
+            item[c] = float(w.get(c, 0.0))
         out.append((d, item))
     out.sort(key=lambda x: x[0])
     return [item for _, item in out]
@@ -131,6 +186,10 @@ def compute_usage_all(rows):
             else:
                 usage.append((eff[i] - eff[i - 1]) * ratio)
         usage_map[col] = usage
+    # 日量列（纯水产出 / 工业水消耗）：无表底读数，当日量直接就是用
+    for col in DAILY_WATER_COLS:
+        eff_map[col] = [None] * n
+        usage_map[col] = [float(r.get(col) or 0) for r in rows]
     return eff_map, usage_map
 
 
@@ -158,6 +217,9 @@ def api_export():
     if key not in METRICS:
         key = "elec"
     cols = METRICS[key]["cols"]
+    if mode != "usage":
+        # 纯水产出 / 工业水消耗 是日量，没有表底读数，底数口径不导出
+        cols = [c for c in cols if c not in DAILY_WATER_COLS]
     unit = METRICS[key]["unit"]
 
     rows = load_rows()
