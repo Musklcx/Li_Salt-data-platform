@@ -10,7 +10,7 @@
   日用量 = （当日有效底数 − 前日有效底数）× 电表倍率；两个有效底数之间的漏抄日按线性插值均摊，
   首个有效底数日无前值（用量为空）。插值不影响合计（合计只取决于首尾真实底数）。
   纯水产出 / 工业水消耗 是当日量（非底数），按天累加 3 个班组后直接使用，不插值、不乘倍率。
-  电表倍率见 COL_RATIO：车间总表 / 60t高压1·2 为 ×4000，30t高压 ×40，其余 ×1；
+  电表倍率见 COL_RATIO：车间总表 / 60t高压1·2 为 ×4000，30t高压 ×100，其余 ×1；
   蒸汽与水的表本身就是计量单位，倍率为 1。
 """
 import os
@@ -44,7 +44,7 @@ COL_RATIO = {
     "车间总电表": 4000,
     "60t高压电表1": 4000,
     "60t高压电表2": 4000,
-    "30t高压电表": 40,
+    "30t高压电表": 100,
     "沸腾床电表": 1,
     "60t低压电表": 1,
     "30t低压电表": 1,
@@ -83,8 +83,9 @@ def parse_date(s):
 
 
 def load_daily_water():
-    """data_103 按日汇总（1 天 3 个班组行）：纯水产出 / 工业水消耗 直接是当日量。
-    返回 {YYYY/MM/DD: {"纯水产出": x, "工业水消耗": y}}；db_day.db 不存在时返回空。"""
+    """data_103 按日汇总（1 天 3 个班组行）：纯水产出 / 工业水消耗 直接是当日量；
+    碳酸锂仓库出库按日把 3 个班组相加（单耗分母，2026/11/10 起替代 balance 金属量口径）。
+    返回 {YYYY/MM/DD: {"纯水产出": x, "工业水消耗": y, "碳酸锂出库": z}}；db_day.db 不存在时返回空。"""
     if not os.path.exists(DAY_DB_PATH):
         return {}
     try:
@@ -93,15 +94,16 @@ def load_daily_water():
         return {}
     out = {}
     try:
-        for d, pure, ind in con.execute(
-                "SELECT [日期],[纯水产出],[工业水消耗] FROM [data_103]"):
+        for d, pure, ind, liout in con.execute(
+                "SELECT [日期],[纯水产出],[工业水消耗],[碳酸锂仓库出库] FROM [data_103]"):
             dt = parse_date(d)
             if dt is None:
                 continue
             k = dt.strftime("%Y/%m/%d")
-            cur = out.setdefault(k, {"纯水产出": 0.0, "工业水消耗": 0.0})
+            cur = out.setdefault(k, {"纯水产出": 0.0, "工业水消耗": 0.0, "碳酸锂出库": 0.0})
             cur["纯水产出"] += float(pure or 0)
             cur["工业水消耗"] += float(ind or 0)
+            cur["碳酸锂出库"] += float(liout or 0)
     except sqlite3.Error:
         return {}
     finally:
@@ -130,16 +132,18 @@ def load_rows():
         w = daily.get(item["日期"])
         for c in DAILY_WATER_COLS:
             item[c] = float(w.get(c, 0.0)) if w else 0.0
+        item["碳酸锂出库"] = float(w.get("碳酸锂出库", 0.0)) if w else 0.0
         seen.add(item["日期"])
         out.append((d, item))
-    # 用水有记录但 balance 尚无该日的行：补一条（抄表列留 0）
+    # 用水有记录但 balance 尚无该日的行：补一条（抄表列留 0，出库从 data_103 取）
     for k, w in daily.items():
         if k in seen:
             continue
         d = parse_date(k)
         if d is None or (w["纯水产出"] == 0 and w["工业水消耗"] == 0):
             continue
-        item = {"日期": k, "碳酸锂金属量": 0.0, "_waterOnly": True}
+        item = {"日期": k, "碳酸锂金属量": 0.0, "碳酸锂出库": float(w.get("碳酸锂出库", 0.0)),
+                "_waterOnly": True}
         for c in ALL_COLS:
             item[c] = 0.0
         for c in DAILY_WATER_COLS:

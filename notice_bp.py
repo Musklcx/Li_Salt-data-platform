@@ -27,7 +27,7 @@ def api_notice_list():
     banzu = request.args.get("banzu", "全部")
     year, mon = month_str.split("-")
     year_val = year
-    mon_val = str(int(mon))  # 09 → 9，适配数据库 2026/9/1 不带前导零
+    mon_val = "%02d" % int(mon)  # 9 → 09，适配统一补零后的日期 2026/09/01
 
     sql_base = """
     SELECT
@@ -43,6 +43,7 @@ def api_notice_list():
         `投活性炭、除氟剂量`,
         `产出锂渣`,
         `回投锂渣`,
+        `除氟剂渣`,
         `镍渣`,
         `104返镁液`,
         `104废液`,
@@ -68,7 +69,7 @@ def api_notice_sum():
     month_str = request.args.get("month")
     year, mon = month_str.split("-")
     year_val = year
-    mon_val = str(int(mon))
+    mon_val = "%02d" % int(mon)  # 9 → 09，适配统一补零后的日期 2026/09/01
 
     rows = query("""
     SELECT

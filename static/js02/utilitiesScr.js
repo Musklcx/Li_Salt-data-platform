@@ -29,7 +29,7 @@ const WATER_TOTAL_COLS = ["自来水", "工业水", "工业水消耗"];
    → 不插值、不乘倍率；「表底读数」口径下不展示（没有读数可看） */
 const DAILY_COLS = new Set(["纯水产出", "工业水消耗"]);
 
-/* 吨锂X耗卡片标签（电/汽/水同一算法：区间合计用量 ÷ 区间碳酸锂金属量）
+/* 吨锂X耗卡片标签（电/汽/水同一算法：区间合计用量 ÷ 区间碳酸锂仓库出库）
    注：用水 tab 的这张卡改为显示「制水率」，见 renderKpiCards */
 const UNIT_NAMES = { elec: "吨锂电耗", steam: "吨锂汽耗", water: "吨锂水耗" };
 
@@ -57,7 +57,7 @@ const METRICS = {
 /* 电表倍率：表上读数 × 倍率 = 实际电量（与后端 COL_RATIO 保持一致） */
 const RATIO = {
     "车间总电表": 4000, "60t高压电表1": 4000, "60t高压电表2": 4000,
-    "30t高压电表": 40,
+    "30t高压电表": 100,
     "沸腾床电表": 1, "60t低压电表": 1, "30t低压电表": 1, "104总电表": 1
 };
 
@@ -303,22 +303,22 @@ function renderKpiCards() {
         return;
     }
 
-    // 吨锂X耗（电/汽同算法）：区间合计用量 ÷ 区间碳酸锂金属量
+    // 吨锂X耗（电/汽同算法）：区间合计用量 ÷ 区间碳酸锂仓库出库（data_103 三班相加）
     // 分子与 KPI 合计同口径：用电=合计电量、汽=合计汽量（原表总汽，含沸腾床）
     $("kpiUnitLabel").innerText = UNIT_NAMES[currentKey];
     $("kpiUnitSmall").innerText = m.unit + "/t";
-    $("kpiUnitCard").title = `区间${$("kpiSumLabel").innerText} ÷ 区间碳酸锂金属量`;
+    $("kpiUnitCard").title = `区间${$("kpiSumLabel").innerText} ÷ 区间碳酸锂仓库出库`;
     {
         const sDate = $("startDate").value, eDate = $("endDate").value;
-        let utilSum = 0, metalSum = 0;
+        let utilSum = 0, outSum = 0;
         filterByDate(rawAllData, sDate, eDate).forEach(([r, i]) => {
             totalCols.forEach(c => {
                 const v = USAGE[c][i];
                 if (v !== null) utilSum += v;
             });
-            metalSum += Number(r["碳酸锂金属量"] || 0);
+            outSum += Number(r["碳酸锂出库"] || 0);
         });
-        $("kpiUnitValue").innerText = metalSum > 0 ? fmt(utilSum / metalSum) : "-";
+        $("kpiUnitValue").innerText = outSum > 0 ? fmt(utilSum / outSum) : "-";
     }
 }
 

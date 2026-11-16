@@ -96,7 +96,7 @@ async function loadNoticeData(month,banzu){
     const $tfoot = $("#noticeTableFoot");
 
     if (!listRes.length) {
-        $tbody.html(`<tr class="table-empty"><td colspan="19">该月份 / 班组下暂无数据</td></tr>`);
+        $tbody.html(`<tr class="table-empty"><td colspan="20">该月份 / 班组下暂无数据</td></tr>`);
         $tfoot.html("");
         return;
     }
@@ -116,6 +116,7 @@ async function loadNoticeData(month,banzu){
             <td>${Number(row["投活性炭、除氟剂量"]||0).toFixed(2)}</td>
             <td>${Number(row.产出锂渣||0).toFixed(2)}</td>
             <td>${Number(row.回投锂渣||0).toFixed(2)}</td>
+            <td>${Number(row.除氟剂渣||0).toFixed(2)}</td>
             <td>${Number(row.镍渣||0).toFixed(2)}</td>
             <td>${Number(row["104返镁液"]||0).toFixed(2)}</td>
             <td>${Number(row["104废液"]||0).toFixed(2)}</td>
@@ -131,7 +132,7 @@ async function loadNoticeData(month,banzu){
     const sumFieldList = [
         "碳酸锂车间产出","硫酸钠","去蒸发前液处理量","合成前液处理量",
         "压滤机卸渣量","蒸发冷凝水","碳酸钠车间消耗","投活性炭、除氟剂量",
-        "产出锂渣","回投锂渣","镍渣","104返镁液","104废液",
+        "产出锂渣","回投锂渣","除氟剂渣","镍渣","104返镁液","104废液",
         "外排水量","钴渣量","清合成釜","更换滤布"
     ];
     const sums = {};

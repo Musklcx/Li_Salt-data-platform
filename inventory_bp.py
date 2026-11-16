@@ -359,10 +359,26 @@ def api_periods():
     end = (d.get('end_date') or '').strip()
     if not month or not start or not end:
         return fail('月份/开始/结束日期都要填')
+    # 日期统一存为 YYYY/MM/DD 补零格式（2026/7/31、2026-07-31 均可输入）
+    import re as _re
+    def _norm_d(s):
+        s = s.replace('.', '/').replace('-', '/')
+        m = _re.match(r'^(\d{4})/(\d{1,2})/(\d{1,2})$', s)
+        if not m:
+            return None
+        try:
+            import datetime as _dt
+            _dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return None
+        return '%04d/%02d/%02d' % (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    start_n, end_n = _norm_d(start), _norm_d(end)
+    if not start_n or not end_n:
+        return fail('开始/结束日期格式不正确，示例：2026/07/31')
     exists = db.execute('SELECT 1 FROM periods WHERE month=?', (month,)).fetchone()
     if exists:
         return fail('该月份已存在')
-    db.execute('INSERT INTO periods (month, start_date, end_date) VALUES (?,?,?)', (month, start, end))
+    db.execute('INSERT INTO periods (month, start_date, end_date) VALUES (?,?,?)', (month, start_n, end_n))
     db.commit()
     return ok({'months': list_months(db)})
 

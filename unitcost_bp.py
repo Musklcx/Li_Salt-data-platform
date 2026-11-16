@@ -12,10 +12,16 @@
 辅料（data_103，1 天 3 个班组各 1 行）：
     103硫酸 / 103液碱 / 活性炭 / 除氟剂 / 碳酸钠车间消耗
     → 按日汇总 3 班组 → 按月累计
-    → 月单耗 = 月消耗 ÷ 月碳酸锂产量（碳酸锂车间产出）
+    → 月单耗 = 月消耗 ÷ 月碳酸锂出库量
+
+    分母口径（2026/11/10 统一）：
+    锂基物料的单耗分母 = data_103「碳酸锂仓库出库」按月累计（碳酸锂质量吨位，
+    不用金属锂折算），与 utilities 页吨锂电耗/汽耗同口径。
+    data_103 的「碳酸锂车间产出」仍以 li 返回，供页面展示与计划完成比对，
+    不作为单耗分母。
 
 辅材（month_plan，本身就是月度数，无需累计）：
-    碳酸锂包装 · 滤布 · 渣袋 ÷ 碳酸锂产量；硫酸钠包装 ÷ 硫酸钠产量
+    碳酸锂包装 · 滤布 · 渣袋 ÷ 碳酸锂出库量；硫酸钠包装 ÷ 硫酸钠产量
 
 换算系数：
     硫酸、液碱在库里记的是体积（m³），吨位 = 体积 × 密度：
@@ -51,7 +57,7 @@ AUX_SRC = {
     "碳酸钠": "碳酸钠车间消耗",
 }
 # 产出列
-LI_COL, NA_COL = "碳酸锂车间产出", "硫酸钠"
+LI_COL, OUT_COL, NA_COL = "碳酸锂车间产出", "碳酸锂仓库出库", "硫酸钠"
 NA4_COLS = ["硫酸钠干料", "硫酸钠湿料", "硫酸钠杂质料", "硫酸钠落地料"]
 
 # month_plan 里的辅材列（月度数，直接取）
@@ -60,10 +66,11 @@ MAT_KEYS = ["碳酸锂包装", "硫酸钠包装", "滤布", "渣袋"]
 # 体积 → 吨 的换算系数（其余物料视为已是吨/条/片，系数 1）
 FACTOR = {"硫酸": 1.84, "液碱": 1.35}
 
-# 单耗基准：÷ 碳酸锂产量 / ÷ 硫酸钠产量
+# 单耗基准：÷ 碳酸锂仓库出库（碳酸锂质量吨位）/ ÷ 硫酸钠产量
 BASE = {
-    "硫酸": "li", "液碱": "li", "活性炭": "li", "除氟剂": "li", "碳酸钠": "li",
-    "碳酸锂包装": "li", "硫酸钠包装": "na", "滤布": "li", "渣袋": "li",
+    "硫酸": "liOut", "液碱": "liOut", "活性炭": "liOut", "除氟剂": "liOut",
+    "碳酸钠": "liOut",
+    "碳酸锂包装": "liOut", "硫酸钠包装": "na", "滤布": "liOut", "渣袋": "liOut",
 }
 UNIT = {
     "硫酸": "t", "液碱": "t", "活性炭": "t", "除氟剂": "t", "碳酸钠": "t",
@@ -103,10 +110,10 @@ def ym_key(k):
 
 
 def load_monthly():
-    """按月汇总 data_103（辅料+产量），并挂上 month_plan 的辅材月消耗与计划量"""
+    """按月汇总 data_103（辅料+产量+出库），并挂上 month_plan 的辅材月消耗与计划量"""
     db = get_db()
 
-    cols = list(AUX_SRC.values()) + [LI_COL, NA_COL] + NA4_COLS
+    cols = list(AUX_SRC.values()) + [LI_COL, OUT_COL, NA_COL] + NA4_COLS
     sql = "SELECT [日期],[班组],%s FROM [data_103]" % ",".join(f"[{c}]" for c in cols)
 
     agg = {}
@@ -115,12 +122,13 @@ def load_monthly():
         if k is None:
             continue
         a = agg.setdefault(k, {"aux": {x: 0.0 for x in AUX_SRC}, "days": set(), "rows": 0,
-                               "li": 0.0, "na": 0.0, "na4": 0.0})
+                               "li": 0.0, "liOut": 0.0, "na": 0.0, "na4": 0.0})
         a["days"].add(str(r["日期"]).strip())
         a["rows"] += 1
         for key, col in AUX_SRC.items():
             a["aux"][key] += num(r[col])
         a["li"] += num(r[LI_COL])
+        a["liOut"] += num(r[OUT_COL])
         a["na"] += num(r[NA_COL])
         for c in NA4_COLS:
             a["na4"] += num(r[c])
@@ -146,6 +154,7 @@ def load_monthly():
         rows.append({
             "m": ym_key(k),
             "li": round(a["li"], 2),
+            "liOut": round(a["liOut"], 2),
             "na": round(a["na"], 2),
             "na4": round(a["na4"], 2),
             "liPlan": round(float(p.get("liPlan") or 0), 2),
@@ -201,8 +210,9 @@ def api_export():
     ws.title = "辅料" if view == "aux" else ("辅材" if view == "mat" else "全部")
 
     # 表头：两行（第一行物料分组，第二行消耗量/单耗）
-    head1 = ["月份", "碳酸锂产量(t)", "", "碳酸锂计划(t)", "", "硫酸钠产量(t)", "", "硫酸钠计划(t)", ""]
-    head2 = ["", "实际", "计划完成", "计划", "环比", "实际", "", "计划", ""]
+    head1 = ["月份", "碳酸锂产量(t)", "碳酸锂出库(t)", "", "碳酸锂计划(t)", "",
+             "硫酸钠产量(t)", "", "硫酸钠计划(t)", ""]
+    head2 = ["", "实际", "出库", "计划完成", "计划", "环比", "实际", "", "计划", ""]
     for k in keys:
         head1 += [k, ""]
         head2 += ["消耗量(%s)" % UNIT[k], "单耗(%s/t)" % UNIT[k]]
@@ -217,12 +227,12 @@ def api_export():
             c.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
     for i in range(len(keys)):
-        c0 = 10 + i * 2
+        c0 = 11 + i * 2
         ws.merge_cells(start_row=1, start_column=c0, end_row=1, end_column=c0 + 1)
 
     prev = None
     for r in rows:
-        vals = [r["m"], r["li"], "", r["liPlan"], "", r["na"], "", r["naPlan"], ""]
+        vals = [r["m"], r["li"], r.get("liOut", 0), "", r["liPlan"], "", r["na"], "", r["naPlan"], ""]
         for k in keys:
             q = r["aux"].get(k) if GROUP[k] == "aux" else r["mat"].get(k)
             q = None if q is None else q * FACTOR.get(k, 1)
@@ -234,10 +244,10 @@ def api_export():
 
     # 列宽 + 冻结
     ws.column_dimensions["A"].width = 11
-    for i in range(2, 10):
+    for i in range(2, 11):
         ws.column_dimensions[get_column_letter(i)].width = 13
     for i in range(len(keys) * 2):
-        ws.column_dimensions[get_column_letter(10 + i)].width = 14
+        ws.column_dimensions[get_column_letter(11 + i)].width = 14
     ws.freeze_panes = "B3"
 
     buf = BytesIO()

@@ -7,6 +7,7 @@
 数据访问统一走 db.py（主库 db_day.db）；图片上传保存到 static/assets/img/upload
 """
 import os
+import re
 from flask import Blueprint, request, render_template
 from PIL import Image
 from db import query, execute
@@ -63,9 +64,18 @@ def risk_update_remark():
 @saferisks_bp.route('/api/risk/update_finish_time', methods=["POST"])
 def risk_update_finish_time():
     
-    """更新整改完成时间"""
+    """更新整改完成时间（统一存为 YYYY/MM/DD 补零格式）"""
     data = request.get_json()
-    execute("UPDATE safeRisks SET 整改完成时间=? WHERE ID=?", (data["finishTime"], data["id"]))
+    finish = str(data.get("finishTime") or "").strip()
+    # 归一化：2026.10.16 / 2026-10-16 / 2026/10/16 / 2026/10/6 → 2026/10/16
+    s = finish.replace('.', '/').replace('-', '/')
+    m = re.match(r'^(\d{4})/(\d{1,2})/(\d{1,2})$', s)
+    if m:
+        try:
+            finish = '%04d/%02d/%02d' % (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            pass  # 无效日期按原样存，交由前端提示
+    execute("UPDATE safeRisks SET 整改完成时间=? WHERE ID=?", (finish, data["id"]))
     return ok(msg="整改完成时间保存成功")
 
 

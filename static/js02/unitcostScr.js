@@ -4,11 +4,13 @@
    数据由 /api/unitcost/all 按月返回（后端已汇总）：
      aux  = 辅料月消耗（data_103 日数据 3 班组累计 → 月）
      mat  = 辅材月消耗（month_plan 月度数，直接取）
-     li / na = 月度碳酸锂 / 硫酸钠产量；liPlan / naPlan = 计划
+     li / na = 月度碳酸锂 / 硫酸钠产量；liOut = 月度碳酸锂仓库出库（碳酸锂质量，
+               单耗分母，与 utilities 页吨锂电耗同口径）；liPlan / naPlan = 计划
    本脚本只做展示层派生：
      1) 硫酸 ×1.84、液碱 ×1.35 折算为吨（qtyOf）
      2) 早于「首次有值月份」的 0 视为未录入（null），不参与计算
-     3) 单耗 = 月消耗 ÷ 月产量；环比 = 与上月比；
+     3) 单耗 = 月消耗 ÷ 月产量；锂基物料分母 = liOut（碳酸锂仓库出库），
+        硫酸钠包装分母 = na；环比 = 与上月比；
         年均单耗 = 本年累计消耗 ÷ 本年累计产量（加权，仅两项都有值的月）
      4) 状态 = 较年均 +25% 超耗 / +10% 偏高 / −10% 节约（库中暂无目标表）
    ============================================================ */
@@ -16,7 +18,7 @@ let DATA = [];          // [{m,li,na,na4,liPlan,naPlan,aux:{},mat:{},days,rows}]
 let ITEMS = [];         // [{key,grp,unit,base,factor,baseName,prec}]
 const FIRST = {};       // key -> 首次有值索引（-1 = 从未有值）
 const UNITS = {};       // key -> [null | 单耗]
-const BASE_NAME = { li: "碳酸锂产量", na: "硫酸钠产量" };
+const BASE_NAME = { li: "碳酸锂产量", liOut: "碳酸锂出库", na: "硫酸钠产量" };
 const COLORS = ["#2b579a", "#1d9e75", "#e0a030", "#d9534f", "#7e57c2", "#00838f", "#c2185b", "#6d4c41", "#455a64"];
 const MAX_MONTHS = 12;  // 趋势图最多显示近 12 个月
 

@@ -1,5 +1,7 @@
 ﻿window.myChart = null;
 let rawAllData = [];
+let eventAll = [];    // 图表事件标注（chart_event 表，后台手工维护）
+let evNoteMap = {};   // {日期: [事件,...]} 当前指标的日期→事件映射，tooltip 用
 let chartType = "line";
 let granularity = "day";
 let currentKey = "lithium";
@@ -102,6 +104,7 @@ function getTodayStr() {
 async function loadData() {
     try {
         rawAllData = await request.get("/api/output/all");
+        try { eventAll = await request.get("/api/chart/events"); } catch (e) { eventAll = []; }
         document.getElementById("startDate").value = getLastDayOfPrevMonth();
         document.getElementById("endDate").value = getTodayStr();
         render();
@@ -153,6 +156,64 @@ function groupByMonth(list) {
         }
     })
     return Object.values(map);
+}
+
+// ===== 事件标注（仅按日粒度显示；按月聚合时事件日期与 X 轴对不上，自动隐藏） =====
+// 类型→渲染：异常→图钉(markPoint) / 检修→色带(markArea) / 变更→标线(markLine)
+// 多曲线指标：异常事件可指定「系列名」钉在哪条线上，不指定默认第一条线
+function buildEventMarks(key, data) {
+    const evs = (granularity === "day" ? eventAll : []).filter(e => e["指标"] === key);
+    const axisSet = new Set(data.map(r => r["日期"]));
+    evNoteMap = {};
+    evs.forEach(e => {
+        if (!axisSet.has(e["开始"])) return;
+        (evNoteMap[e["开始"]] = evNoteMap[e["开始"]] || []).push(e);
+    });
+
+    const seriesArr = seriesConfig[key];
+    const pinsBySeries = {};   // 系列下标 → 图钉数组（不同事件可钉不同曲线）
+    evs.filter(e => e["类型"] === "异常" && axisSet.has(e["开始"])).forEach(e => {
+        let si = 0;
+        if (e["系列名"]) {
+            const f = seriesArr.findIndex(s => s.name === e["系列名"]);
+            if (f >= 0) si = f;
+        }
+        const row = data.find(r => r["日期"] === e["开始"]);
+        if (!row) return;
+        const v = Number(row[seriesArr[si].field] || 0);
+        (pinsBySeries[si] = pinsBySeries[si] || []).push({ name: e["说明"], coord: [e["开始"], v], value: v });
+    });
+
+    const areas = evs
+        .filter(e => e["类型"] === "检修" && e["结束"] && axisSet.has(e["开始"]) && axisSet.has(e["结束"]))
+        .map(e => [{ name: e["说明"], xAxis: e["开始"] }, { xAxis: e["结束"] }]);
+
+    const lines = evs
+        .filter(e => e["类型"] === "变更" && axisSet.has(e["开始"]))
+        .map(e => ({ name: e["说明"], xAxis: e["开始"] }));
+
+    const pinStyle = {
+        symbol: "pin", symbolSize: 44,
+        itemStyle: { color: "#E24B4A", borderColor: "#fff", borderWidth: 1.5 },
+        label: { show: true, formatter: "!", color: "#fff", fontSize: 14, fontWeight: "bold" }
+    };
+    const mpOf = pins => pins ? Object.assign({}, pinStyle, { data: pins }) : undefined;
+
+    return {
+        pinsBySeries,
+        mpOf,
+        markArea: areas.length ? {
+            itemStyle: { color: "rgba(239,159,39,0.13)" },
+            label: { show: true, position: "insideTop", color: "#854F0B", fontSize: 11 },
+            data: areas
+        } : undefined,
+        markLine: lines.length ? {
+            symbol: "none",
+            lineStyle: { color: "#534AB7", type: "dashed" },
+            label: { position: "end", formatter: "{b}", color: "#3C3489", fontSize: 11 },
+            data: lines
+        } : undefined
+    };
 }
 
 // ===== KPI 卡片渲染（替代原 renderStatDisplay + calcStat 的 DOM 回填） =====
@@ -416,9 +477,25 @@ function render() {
         return ser;
     });
 
+    // 事件标注：图钉按指定系列挂载；色带/标线挂到第一个系列
+    const marks = buildEventMarks(currentKey, data);
+    seriesList.forEach((ser, i) => {
+        ser.markPoint = marks.mpOf(marks.pinsBySeries[i]);
+    });
+    if (seriesList.length) {
+        seriesList[0].markArea = marks.markArea;
+        seriesList[0].markLine = marks.markLine;
+    }
+
     const option = {
         tooltip: {
             trigger: "axis",
+            // 白底深字：事件说明的红字/紫字等任何颜色都清晰可读
+            backgroundColor: "#ffffff",
+            borderColor: "#d9dce1",
+            borderWidth: 1,
+            textStyle: { color: "#333", fontSize: 13 },
+            extraCssText: "box-shadow: 0 2px 10px rgba(0,0,0,0.18); border-radius: 6px;",
             formatter: (params) => {
                 if (!params || !params.length) return "";
                 let html = params[0].axisValue + "<br/>";
@@ -434,6 +511,13 @@ function render() {
                         const c = v < 0 ? "#e74c3c" : "#2f9e6b";
                         html += `<span style="color:${c};font-weight:600;">差值：${v > 0 ? "+" : ""}${v.toFixed(2)}</span>`;
                     }
+                }
+                // 事件说明（当天有事件时追加备注：类型红色加粗，正文深灰）
+                const notes = evNoteMap[params[0].axisValue];
+                if (notes) {
+                    notes.forEach(n => {
+                        html += `<div style="margin-top:3px;"><b style="color:#a32d2d;">${n["类型"]}</b><span style="color:#555;">：${n["说明"]}</span></div>`;
+                    });
                 }
                 return html;
             }

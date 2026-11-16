@@ -20,6 +20,7 @@ $(function(){
             {title:"103车间岗位班长绩效汇总表",file:"/static/file/kpi/103车间岗位班长绩效汇总表.xlsx",date:"2026-07-19"},
         ],
         staff: [
+            {title:"103车间计算器",file:"/static/file/staff/103计算机.rar",date:"2026-11-12",isNew:true},
             {title:"103车间人员信息表",file:"/static/file/staff/103车间人员信息表.xlsx",date:"2026-09-10"},
             {title:"103车间合成釜汇总表",file:"/static/file/staff/103车间合成釜汇总表.xlsx",date:"2026-09-05"},
             {title:"103车间档案文件收集清单",file:"/static/file/staff/103车间档案文件收集清单.xlsx",date:"2026-09-03"},

@@ -219,15 +219,38 @@ def api_export_output():
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
+@data_bp.route("/api/chart/events")
+def api_chart_events():
+    """图表事件标注（db_day.db 的 chart_event 表，后台手工维护）
+    返回全部事件；类型决定渲染方式：异常→图钉(markPoint)、检修→色带(markArea)、变更→标线(markLine)
+    日期统一格式化为 2026/09/01，与图表 X 轴标签一致"""
+    rows = query("SELECT ID, 指标, 类型, 开始日期, 结束日期, 说明, 系列名 FROM chart_event ORDER BY ID")
+    res = []
+    for r in rows:
+        d1 = parse_raw_date(r["开始日期"])
+        if d1 is None:
+            continue  # 日期写错的行跳过，不影响其他事件
+        d2 = parse_raw_date(r["结束日期"] or "") if r["结束日期"] else None
+        res.append({
+            "ID": r["ID"],
+            "指标": r["指标"],
+            "类型": r["类型"],
+            "开始": format_date(r["开始日期"]),
+            "结束": format_date(r["结束日期"]) if d2 else None,
+            "说明": r["说明"],
+            "系列名": r["系列名"] or None
+        })
+    return ok(res)
+
+
 @data_bp.route("/api/plan/get")
 def api_plan_get():
     """读取month_plan月度计划表，前端参数 yyyy-mm"""
     month_str = request.args.get("month")  # 例如 "2026-09"
-    # 把 "2026-09" 转成 "2026年9月"，匹配数据库month_plan表的月份字段
+    # 把 "2026-09" 转成 "2026年09月"，匹配数据库month_plan表的月份字段
+    # （月份已统一为补零格式，见 tools/normalize_dates.py）
     year, mon = month_str.split("-")
-    # 去掉月份前面的0，09 →9，数据库是"2026年9月"不是"2026年09月"
-    mon_int = int(mon)
-    db_month_text = f"{year}年{mon_int}月"
+    db_month_text = f"{int(year):04d}年{int(mon):02d}月"
 
     row = fetchone("SELECT 碳酸锂,硫酸钠 FROM month_plan WHERE 月份 = ?", [db_month_text])
     if row is None:
