@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 月度考勤</title>
+    <!-- Element UI 主题（墨绿定制版，考勤模块专用 Vue2 + Element UI） -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/att/element-ui/index-brand.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}?v=20261119 }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+            font-size: 14px;
+            color: #1F2937;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        /* 考勤模块内容区：复用原系统卡片风格，接在 Workweb 顶导航之下 */
+        .att-content { padding: 4px 2px 30px; }
+        .att-content #app.fill-screen { height: calc(100vh - 130px); }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航（与全站一致；人员管理组高亮） -->
+    <div class="top-nav">
+        <div class="nav-tab nav-dropdown">
+            数据对比 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/data">数据对比</a>
+                <a href="/utilities">水电汽耗</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            信息公示 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/notice">班组工作量</a>
+                <a href="/inventory">期末金属量</a>
+                <a href="/unitcost">辅料包材</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown active">
+            人员管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/att/attendance">考勤记录</a>
+                <a href="/att/schedule">排班与异动</a>
+                <a href="/att/staff">人员信息</a>
+            </div>
+        </div>
+        <a href="/download" class="nav-tab">下载专区</a>
+        <div class="nav-tab nav-dropdown">
+            系统管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/users">用户管理</a>
+                <a href="/docs">接口文档</a>
+                <a href="/logs">运行日志</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 内容区（自 Attendance 项目迁入，功能与交互保持不变） -->
+    <div class="att-content">
+<div id="app" v-cloak>
+  <div class="page-head">
+    <div>
+      <h2>月度考勤表
+        <el-tag v-if="lock.locked" size="mini" type="warning" effect="plain" style="margin-left:8px">
+          已月结锁定
+        </el-tag>
+        <el-tag v-if="totals.adjustments" size="mini" type="info" effect="plain" style="margin-left:6px">
+          调整单 [[ totals.adjustments ]] 笔
+        </el-tag>
+        <el-tag v-if="archive.archived" size="mini" type="success" effect="plain" style="margin-left:6px">
+          已归档 v[[ archive.ver ]] · [[ archive.at ]]
+        </el-tag>
+      </h2>
+      <div class="sub">[[ y ]] 年 [[ m ]] 月 · 汇总截至今日（[[ totals.upto ]]），未来日期只显示计划 · 工时单位：小时（h），<b>合计 = 白班工时 + 夜班工时</b>，夜班列本身为班次数 · 格内小字为当日异动（<b>-x</b> 请假扣减 / <b>+x</b> 加班）</div>
+    </div>
+    <div class="actions">
+      <input type="month" class="month-native" :value="month"
+             @change="goMonth($event.target.value)">
+      <el-button size="small" icon="el-icon-download" @click="exportExcel">导出 Excel</el-button>
+      <el-button size="small" icon="el-icon-edit-outline" :disabled="!lock.locked"
+                 @click="openAdjust">调整单</el-button>
+      <el-button size="small" :icon="lock.locked ? 'el-icon-unlock' : 'el-icon-lock'"
+                 :type="lock.locked ? 'warning' : 'default'" plain
+                 @click="toggleLock">[[ lock.locked ? '解锁' : '月结锁定' ]]</el-button>
+      <el-button size="small" icon="el-icon-folder-checked" plain
+                 :type="archive.archived ? 'success' : 'default'"
+                 :disabled="!lock.locked" :loading="archiving" @click="doArchive">
+        [[ archive.archived ? '重新归档' : '结算归档' ]]
+      </el-button>
+      <el-dropdown v-if="archive.archived" trigger="click" style="margin-left:8px">
+        <el-button size="small" icon="el-icon-download" plain>
+          下载归档<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item @click.native="downloadArchive('xlsx')">结算表（xlsx）</el-dropdown-item>
+          <el-dropdown-item @click.native="downloadArchive('json')">数据快照（json）</el-dropdown-item>
+          <el-dropdown-item @click.native="downloadArchive('meta')">归档说明（txt）</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-button size="small" icon="el-icon-refresh" @click="reload">刷新</el-button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi is-brand">
+      <div class="k-label"><i class="el-icon-user"></i>在岗人数</div>
+      <div class="k-value num">[[ totals.staff ]]<span class="k-unit">人</span></div>
+      <div class="k-foot">倒班 [[ (byType['倒班制']||{}).staff || 0 ]] 人 · 常白 [[ (byType['白班制']||{}).staff || 0 ]] 人</div>
+    </div>
+    <div class="kpi is-day">
+      <div class="k-label"><i class="el-icon-sunny"></i>出勤工时合计</div>
+      <div class="k-value num">[[ totals.total ]]<span class="k-unit">h</span></div>
+      <div class="k-foot">白班 [[ totals.work ]]h + 夜班 [[ totals.nightH ]]h · 全月计划 [[ totals.planWork ]]h</div>
+    </div>
+    <div class="kpi is-night">
+      <div class="k-label"><i class="el-icon-moon"></i>夜班班次</div>
+      <div class="k-value num">[[ totals.night ]]<span class="k-unit">次</span></div>
+      <div class="k-foot">夜班 11.5h/班</div>
+    </div>
+    <div class="kpi is-leave">
+      <div class="k-label"><i class="el-icon-document-delete"></i>请假合计</div>
+      <div class="k-value num">[[ totals.leave ]]<span class="k-unit">h</span></div>
+      <div class="k-foot">事假 [[ totals.leaveOnly ]]h · 早/退 [[ totals.lateEr ]]h · 旷工 [[ totals.absent ]]h · 带薪 [[ totals.paidOnly ]]h</div>
+    </div>
+    <div class="kpi is-ot">
+      <div class="k-label"><i class="el-icon-time"></i>加班 / 放假日出勤</div>
+      <div class="k-value num">[[ totals.ot ]]<span class="k-unit">h</span></div>
+      <div class="k-foot">日常 + 公休 + 法定<span v-if="totals.compOff"> · 已调休 [[ totals.compOff ]]h</span></div>
+    </div>
+  </div>
+
+  <!-- 班制分组: 倒班 11h/班 与 常白 8h/天 口径不同, 合在一起看总工时会失真 -->
+  <div class="typebar" v-if="typeRows.length > 1">
+    <span class="tb-title">班制分组</span>
+    <span class="tb-item" v-for="t in typeRows" :key="t.name">
+      <b>[[ t.name ]]</b>
+      <em>[[ t.staff ]] 人</em>
+      <em>合计 [[ t.total ]]h</em>
+      <em>白班 [[ t.work ]]h</em>
+      <em v-if="t.night">夜班 [[ t.night ]] 次</em>
+      <em>加班 [[ t.ot ]]h</em>
+      <em v-if="t.compOff">调休 [[ t.compOff ]]h</em>
+    </span>
+    <span class="tb-note">两种班制的月工时不可横向比较</span>
+  </div>
+
+  <div class="card compact">
+    <div class="card-head">
+      <h3>考勤明细 <em>共 [[ days.length ]] 天 · [[ filteredRows.length ]] 人</em></h3>
+      <div class="toolbar">
+        <el-input v-model="keyword" size="small" clearable placeholder="搜索姓名"
+                  prefix-icon="el-icon-search" style="width:150px"></el-input>
+        <el-radio-group v-model="group" size="small">
+          <el-radio-button label="">全部</el-radio-button>
+          <el-radio-button v-for="g in groups" :key="g" :label="g">[[ g ]]</el-radio-button>
+        </el-radio-group>
+      </div>
+    </div>
+
+    <el-table ref="attTable" :data="filteredRows" size="mini" border
+              :cell-class-name="cellClass" :header-cell-class-name="headClass"
+              :max-height="tableH" style="width:100%">
+      <el-table-column type="index" label="序号" width="44" align="center" fixed="left"></el-table-column>
+      <el-table-column prop="name" label="姓名" width="84" fixed="left">
+        <template slot-scope="scope"><strong>[[ scope.row.name ]]</strong></template>
+      </el-table-column>
+      <el-table-column prop="group" label="班组" width="86" fixed="left">
+        <template slot-scope="scope">
+          <el-tooltip v-if="scope.row.groupTip" :content="scope.row.groupTip" placement="top">
+            <span><span class="dot" :style="{background: groupColor(scope.row.groups[0])}"></span>[[ scope.row.group ]]</span>
+          </el-tooltip>
+          <span v-else>
+            <span class="dot" :style="{background: groupColor(scope.row.group)}"></span>[[ scope.row.group ]]
+          </span>
+        </template>
+      </el-table-column>
+
+      <el-table-column v-for="(d, i) in days" :key="d.iso" :prop="'c' + i" width="38" align="center">
+        <template slot="header">
+          <div class="th-day" :class="{'is-weekend': d.weekend, 'is-today': d.iso === today, 'is-future': d.future}">
+            <div class="d">[[ d.day ]]</div>
+            <div class="w">[[ d.w ]]</div>
+          </div>
+        </template>
+        <template slot-scope="scope">
+          <span class="chip" :class="scope.row.cells[i].k" :title="scope.row.cells[i].tip">
+            <span class="v">[[ scope.row.cells[i].t ]]</span>
+            <span class="mk" v-for="(mk, j) in scope.row.cells[i].m" :key="j" :class="mk.s">[[ mk.v ]]</span>
+          </span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="total" label="合计" width="56" align="center">
+        <template slot="header">
+          <el-tooltip content="出勤工时合计 = 白班工时 + 夜班工时（夜班按 11.5h/班计）；已扣掉当天请假" placement="top">
+            <span>合计</span>
+          </el-tooltip>
+        </template>
+        <template slot-scope="scope"><strong class="num">[[ scope.row.total ]]</strong></template>
+      </el-table-column>
+      <el-table-column prop="night" label="夜班" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="本月夜班次数（工时计在合计里，每班 11.5h）" placement="top"><span>夜班</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#6D28D9">[[ scope.row.night ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="leave" label="事假" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="事假等非带薪假扣减工时（迟到早退、旷工另列，均不重复计）" placement="top"><span>事假</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#BE185D">[[ scope.row.leave ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="lateEr" label="早/退" width="56" align="center">
+        <template slot="header">
+          <el-tooltip content="迟到早退扣减工时（异动记录-请假-迟到早退，按实际填的小时数扣）" placement="top"><span>早/退</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#BE185D">[[ scope.row.lateEr ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="absent" label="旷工" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="旷工扣减工时（异动记录-请假-旷工）" placement="top"><span>旷工</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#C0392B">[[ scope.row.absent ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="compOff" label="调休" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="加班换来的休息：冲减当日工时，但不扣薪（与事假区分）" placement="top"><span>调休</span></el-tooltip>
+        </template>
+        <template slot-scope="scope">
+          <span class="num" :style="{color: scope.row.compOff ? '#0F6E56' : '#C0C4CC'}">[[ scope.row.compOff ]]</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="casual" label="日常" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="日常加班工时（倍率 1.0）" placement="top"><span>日常</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#C2410C">[[ scope.row.casual ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="weekly" label="公休" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="公休日加班/出勤工时（倍率 2.0）" placement="top"><span>公休</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#C2410C">[[ scope.row.weekly ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="legal" label="法定" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="放假日出勤·法定（倍率 3.0）" placement="top"><span>法定</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#C2410C">[[ scope.row.legal ]]</span></template>
+      </el-table-column>
+      <el-table-column prop="paid" label="带薪" width="50" align="center">
+        <template slot="header">
+          <el-tooltip content="带薪工时（病/婚/丧/产/工伤/年休），照常计薪" placement="top"><span>带薪</span></el-tooltip>
+        </template>
+        <template slot-scope="scope"><span class="num" style="color:#BE185D">[[ scope.row.paid ]]</span></template>
+      </el-table-column>
+    </el-table>
+
+    <div class="legend" style="padding:0 14px 12px">
+      <span class="item"><span class="swatch" style="background:#EAF2FD"></span>白班 11h · 常白 8h</span>
+      <span class="item"><span class="swatch" style="background:#F1ECFE"></span>夜班 11.5h</span>
+      <span class="item"><span class="swatch" style="background:#F4F4F5"></span>休息</span>
+      <span class="item"><span class="swatch" style="background:#FDEBF3"></span>请假 / 带薪假（格内为假别）</span>
+      <span class="item"><span class="swatch" style="background:#FFF1E6"></span>加班 / 放假日出勤（格内为工时）</span>
+      <span class="item"><span class="swatch" style="background:#FDE7E7"></span>放假（整班 / 个人）</span>
+      <span class="item"><span class="swatch" style="background:#F1F3F6"></span>未发生（只显示计划）</span>
+      <span class="item"><span class="swatch" style="background:#FFFFFF;border:1px dashed #D3D9E2"></span>未入职 / 已离职</span>
+      <span class="item"><span class="mk-sample" style="color:#BE185D">-1</span>请假扣减</span>
+      <span class="item"><span class="mk-sample" style="color:#C2410C">+2</span>加班 / 放假日出勤</span>
+      <span class="item"><span class="mk-sample" style="color:#0F766E">换</span>两人换班</span>
+      <span class="item muted" style="margin-left:auto">鼠标悬停格子看当天明细 · 滚轮 = 上下滑动 · Shift+滚轮 = 左右滑动日期</span>
+    </div>
+  </div>
+
+  <el-dialog title="调整单（月结后更正）" :visible.sync="adjDialog" width="800px" :close-on-click-modal="false">
+    <div class="hint-line" style="margin-bottom:10px">
+      <i class="el-icon-info"></i>
+      月结锁定后，排班与异动不能再改；所有更正都登记为调整单并永久留痕（不能删除，冲正请登记一笔反向调整）。
+    </div>
+    <el-table :data="adjustments" size="mini" border max-height="230" empty-text="本月暂无调整单">
+      <el-table-column prop="date" label="日期" width="96" align="center"></el-table-column>
+      <el-table-column prop="name" label="员工" width="96"></el-table-column>
+      <el-table-column prop="group" label="班组" width="70" align="center"></el-table-column>
+      <el-table-column label="类别" width="110" align="center">
+        <template slot-scope="s">[[ s.row.category ]][[ s.row.type ? ' · ' + s.row.type : '' ]]</template>
+      </el-table-column>
+      <el-table-column label="调整工时" width="84" align="center">
+        <template slot-scope="s">
+          <span class="num" :style="{color: s.row.hours >= 0 ? '#0E9F6E' : '#DC2626'}">[[ s.row.hours > 0 ? '+' : '' ]][[ s.row.hours ]]</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="reason" label="原因" align="left"></el-table-column>
+      <el-table-column prop="created_at" label="登记时间" width="140" align="center"></el-table-column>
+    </el-table>
+
+    <el-divider content-position="left">新增调整</el-divider>
+    <el-form :model="adjForm" size="small" inline @submit.native.prevent>
+      <el-form-item label="员工">
+        <el-select v-model="adjForm.staff_id" filterable placeholder="选择员工" style="width:180px">
+          <el-option v-for="s in staffOptions" :key="s.id" :label="s.name + ' · ' + s.group" :value="s.id"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="日期">
+        <el-date-picker v-model="adjForm.adj_date" type="date" value-format="yyyy-MM-dd"
+                        :placeholder="'留空 = 整月'" :picker-options="monthPicker"
+                        style="width:140px"></el-date-picker>
+      </el-form-item>
+      <el-form-item label="类别">
+        <el-select v-model="adjForm.category" style="width:100px" @change="onAdjCategory">
+          <el-option v-for="c in adjCategories" :key="c" :label="c" :value="c"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="类型" v-if="adjForm.category !== '出勤'">
+        <el-select v-model="adjForm.exc_type" style="width:130px">
+          <el-option v-for="t in (adjForm.category === '请假' ? leaveTypes : otTypes)"
+                     :key="t" :label="t" :value="t"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="工时">
+        <el-input-number v-model="adjForm.hours" :min="-24" :max="24" :step="0.5"
+                         controls-position="right" style="width:110px"></el-input-number>
+      </el-form-item>
+      <el-form-item label="原因">
+        <el-input v-model="adjForm.reason" placeholder="必填，例如：漏录 10/07 加班" style="width:260px"></el-input>
+      </el-form-item>
+    </el-form>
+    <div class="hint-line" style="margin-top:-4px">
+      <i class="el-icon-warning-outline"></i>
+      工时填正数表示调增、负数表示调减；出勤类直接增减白班工时，请假类冲减当日出勤，加班类计入对应倍率。
+    </div>
+    <span slot="footer">
+      <el-button size="small" @click="adjDialog = false">关闭</el-button>
+      <el-button size="small" type="primary" @click="addAdjust">登记调整</el-button>
+    </span>
+  </el-dialog>
+</div>
+    </div>
+
+    <script>window.PAGE = {{ page|tojson }};</script>
+<script src="{{ url_for('static', filename='vendor/att/vue.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/att/element-ui/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/request.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js02/att_common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js02/att_page_attendance.js') }}"></script>
+</body>
+</html>

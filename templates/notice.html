@@ -6,7 +6,7 @@
     <title>锂盐车间共享平台 - 信息公示</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/homeStyle.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}?v=20261119 }}">
     <style>
         body {
             background: #f4f7fa;
@@ -231,7 +231,6 @@
             <div class="nav-dropdown-menu">
                 <a href="/hazard">30吨蒸发问题汇总</a>
                 <a href="/saferisks">安全隐患整改</a>
-                <a href="#" onclick="alert('未开发')">车间生产计划</a>
             </div>
         </div>
         <div class="nav-tab nav-dropdown active">
@@ -242,7 +241,14 @@
                 <a href="/unitcost">辅料包材</a>
             </div>
         </div>
-        <a href="/staff" class="nav-tab">人员概况</a>
+        <div class="nav-tab nav-dropdown">
+            人员管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/att/attendance">考勤记录</a>
+                <a href="/att/schedule">排班与异动</a>
+                <a href="/att/staff">人员信息</a>
+            </div>
+        </div>
         <a href="/download" class="nav-tab">下载专区</a>
 
         <div class="nav-tab nav-dropdown">

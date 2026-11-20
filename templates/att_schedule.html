@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 排班与异动</title>
+    <!-- Element UI 主题（墨绿定制版，考勤模块专用 Vue2 + Element UI） -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/att/element-ui/index-brand.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}?v=20261119 }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance.css') }}">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+            font-size: 14px;
+            color: #1F2937;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        /* 考勤模块内容区：复用原系统卡片风格，接在 Workweb 顶导航之下 */
+        .att-content { padding: 4px 2px 30px; }
+        .att-content #app.fill-screen { height: calc(100vh - 130px); }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航（与全站一致；人员管理组高亮） -->
+    <div class="top-nav">
+        <div class="nav-tab nav-dropdown">
+            数据对比 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/data">数据对比</a>
+                <a href="/utilities">水电汽耗</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            信息公示 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/notice">班组工作量</a>
+                <a href="/inventory">期末金属量</a>
+                <a href="/unitcost">辅料包材</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown active">
+            人员管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/att/attendance">考勤记录</a>
+                <a href="/att/schedule">排班与异动</a>
+                <a href="/att/staff">人员信息</a>
+            </div>
+        </div>
+        <a href="/download" class="nav-tab">下载专区</a>
+        <div class="nav-tab nav-dropdown">
+            系统管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/users">用户管理</a>
+                <a href="/docs">接口文档</a>
+                <a href="/logs">运行日志</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 内容区（自 Attendance 项目迁入，功能与交互保持不变） -->
+    <div class="att-content">
+<div id="app" v-cloak class="fill-screen">
+  <div class="page-head">
+    <div>
+      <h2>排班与异动</h2>
+      <div class="sub">[[ y ]] 年 [[ m ]] 月 · 班型按 6 天周期自动顺延 · 支持整班/单班/个人放假、两人换班</div>
+    </div>
+    <div class="actions">
+      <input type="month" class="month-native" :value="month"
+             @change="goMonth($event.target.value)">
+      <el-button size="small" icon="el-icon-setting" @click="cfgDialog = true">班制设置</el-button>
+      <el-button size="small" icon="el-icon-refresh-right" :loading="generating"
+                 :disabled="locked" @click="generate">生成本月排班</el-button>
+    </div>
+  </div>
+
+  <el-alert v-if="locked" type="warning" :closable="false" show-icon
+            style="margin-bottom:10px; flex:none"
+            title="本月已月结锁定：排班与异动不可修改">
+    <span slot="default">
+      如需更正，请到「月度考勤」登记调整单（永久留痕）。锁定时间：[[ lock.at ]]
+    </span>
+  </el-alert>
+
+  <div class="split">
+    <!-- ============ 左: 排班日历 ============ -->
+    <div class="card">
+      <div class="card-head">
+        <h3>排班日历 <em>勾「放」= 三班全放 · 点班组格 = 单班放假</em></h3>
+        <el-tooltip content="放假日不计计划出勤；可登记放假日出勤，也可在右侧按人放假" placement="top">
+          <i class="el-icon-info" style="color:#909399"></i>
+        </el-tooltip>
+      </div>
+      <div class="cal-wrap" ref="calWrap">
+        <el-table :data="gridRows" size="mini" border :row-class-name="rowClass"
+                  :height="calH" style="width:100%">
+          <el-table-column label="放" width="46" align="center">
+            <template slot-scope="scope">
+              <el-checkbox v-if="!scope.row.filler" :value="!!scope.row.hol"
+                           :indeterminate="!!scope.row.someHol && !scope.row.hol"
+                           :disabled="locked" @change="toggleHoliday(scope.row)"></el-checkbox>
+            </template>
+          </el-table-column>
+          <el-table-column label="日期" width="94">
+            <template slot-scope="scope">
+              <span v-if="!scope.row.filler" class="cal-date"
+                    :class="{'is-weekend': scope.row.weekend, 'is-today': scope.row.iso === today}">
+                [[ scope.row.day ]]<span class="w">[[ scope.row.w ]]</span>
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column v-for="g in groups" :key="g" :label="g" align="center">
+            <template slot-scope="scope">
+              <span v-if="scope.row.filler"></span>
+              <span v-else class="shift-tag shift-clickable"
+                    :class="scope.row.hols[g] ? 'shift-holiday' : ('shift-' + scope.row.shifts[g])"
+                    :title="scope.row.hols[g] ? '点击取消 ' + g + ' 放假' : '点击把 ' + g + ' 设为放假'"
+                    @click="toggleGroupHoliday(scope.row, g)">
+                <template v-if="scope.row.hols[g]">放·[[ scope.row.shifts[g] ]]</template>
+                <template v-else>[[ scope.row.shifts[g] ]]</template>
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="legend" style="padding:10px 14px 12px">
+        <span v-for="s in summary" :key="s.group" class="item">
+          <span class="dot" :style="{background: groupColor(s.group)}"></span>
+          <b>[[ s.group ]]</b>&nbsp;白 [[ s.day ]] · 夜 [[ s.night ]] · 休 [[ s.rest ]]
+        </span>
+      </div>
+    </div>
+
+    <!-- ============ 右: 异动记录 ============ -->
+    <div class="card">
+      <div class="card-head">
+        <h3>异动记录 <em>请假 / 加班 / 放假日出勤</em></h3>
+      </div>
+      <div class="card-body tight" style="padding-bottom:0">
+        <el-tabs v-model="tab" @tab-click="syncHash">
+          <!-- 请假 -->
+          <el-tab-pane name="leave">
+            <span slot="label">请假 <el-tag size="mini" type="danger" effect="plain">[[ records['请假'].length ]]</el-tag></span>
+            <div id="leave-sec">
+              <el-form :model="leaveForm" size="small" inline :disabled="locked" @submit.native.prevent>
+                <el-form-item label="员工">
+                  <el-select v-model="leaveForm.staff_ids" multiple filterable collapse-tags
+                             placeholder="可多选" style="width:210px">
+                    <el-option-group v-for="g in staffGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="s in g.list" :key="s.id" :label="s.name" :value="s.id">
+                        <span>[[ s.name ]]</span>
+                        <span class="muted" style="float:right;margin-left:12px">[[ s.group ]]</span>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="假别">
+                  <el-select v-model="leaveForm.exc_type" style="width:120px">
+                    <el-option-group v-for="g in leaveTypeGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="o in g.options" :key="o.value" :label="o.label" :value="o.value"></el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="日期">
+                  <el-radio-group v-model="leaveForm.date_mode" size="mini" style="margin-right:8px">
+                    <el-radio-button label="single">单日</el-radio-button>
+                    <el-radio-button label="range">连续多天</el-radio-button>
+                  </el-radio-group>
+                  <el-date-picker v-if="leaveForm.date_mode === 'single'" v-model="leaveForm.exc_date"
+                                  type="date" value-format="yyyy-MM-dd"
+                                  placeholder="选择日期" style="width:140px"></el-date-picker>
+                  <el-date-picker v-else v-model="leaveForm.range" type="daterange"
+                                  value-format="yyyy-MM-dd" start-placeholder="开始日期"
+                                  end-placeholder="结束日期" unlink-panels
+                                  style="width:250px"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="扣减">
+                  <el-tooltip v-if="leaveForm.date_mode === 'single'" placement="top"
+                              content="留 0 = 按当天班次自动扣满（白 11h / 夜 11.5h / 常白 8h）；迟到早退这类按实际填">
+                    <el-input-number v-model="leaveForm.actual_hours" :min="0" :step="0.5"
+                                     controls-position="right" style="width:105px"></el-input-number>
+                  </el-tooltip>
+                  <span v-else class="muted" style="font-size:12px">
+                    不用填，按每天班次自动扣满（预览里逐天可见）；某天只请几小时的话用单日模式登记
+                  </span>
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="leaveForm.note" placeholder="选填" style="width:150px"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="addRecord('请假', leaveForm)">添加</el-button>
+                </el-form-item>
+              </el-form>
+              <!-- 连续登记: 提交前先看清会写哪几天、跳过哪几天 -->
+              <div class="pv-box" v-if="leaveForm.date_mode === 'range' && (pv || pvLoading)">
+                <div class="pv-head">
+                  <i class="el-icon-info"></i>
+                  <b v-if="pvLoading">正在核对这几天各自的班次…</b>
+                  <b v-else>提交前预览</b>
+                  <span class="muted" v-if="pv && !pvLoading">
+                    休息日、放假、在职区间外的日期会自动跳过，不需要手工拆开录
+                  </span>
+                </div>
+                <ul class="pv-lines" v-if="pv">
+                  <li v-for="(line, i) in pv.lines" :key="i">[[ line ]]</li>
+                </ul>
+                <div class="pv-days" v-if="pv && pv.days.length">
+                  <span v-for="d in pv.days" :key="d.date" class="pv-day"
+                        :class="d.add ? 'is-add' : (d.rest ? 'is-rest' : (d.exist ? 'is-exist' : 'is-off'))">
+                    [[ d.tag ]]
+                  </span>
+                </div>
+              </div>
+              <record-table :rows="records['请假']" :columns="leaveColumns" tone="leave" :locked="locked"
+                            empty="暂无请假记录" @remove="removeRecord"></record-table>
+            </div>
+          </el-tab-pane>
+
+          <!-- 加班 -->
+          <el-tab-pane name="ot">
+            <span slot="label">加班 <el-tag size="mini" type="warning" effect="plain">[[ records['加班'].length ]]</el-tag></span>
+            <div id="ot-sec">
+              <el-form :model="otForm" size="small" inline :disabled="locked" @submit.native.prevent>
+                <el-form-item label="员工">
+                  <el-select v-model="otForm.staff_ids" multiple filterable collapse-tags
+                             placeholder="可多选" style="width:210px">
+                    <el-option-group v-for="g in staffGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="s in g.list" :key="s.id" :label="s.name" :value="s.id">
+                        <span>[[ s.name ]]</span>
+                        <span class="muted" style="float:right;margin-left:12px">[[ s.group ]]</span>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="类型">
+                  <el-select v-model="otForm.exc_type" style="width:110px">
+                    <el-option v-for="t in otTypes" :key="t" :label="t" :value="t">
+                      <span>[[ t ]]</span>
+                      <span class="muted" style="float:right;margin-left:12px">×[[ multOf(t) ]]</span>
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="日期">
+                  <el-date-picker v-model="otForm.exc_date" type="date" value-format="yyyy-MM-dd"
+                                  placeholder="选择日期" style="width:140px"
+                                  @change="onOtDate"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="时长">
+                  <el-input-number v-model="otForm.actual_hours" :min="0" :step="0.5"
+                                   controls-position="right" style="width:105px"></el-input-number>
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="otForm.note" placeholder="选填" style="width:150px"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="addRecord('加班', otForm)">添加</el-button>
+                </el-form-item>
+              </el-form>
+              <record-table :rows="records['加班']" :columns="otColumns" tone="ot" :locked="locked"
+                            empty="暂无加班记录" @remove="removeRecord"></record-table>
+            </div>
+          </el-tab-pane>
+
+          <!-- 放假 -->
+          <el-tab-pane name="hol">
+            <span slot="label">放假日出勤 <el-tag size="mini" type="info" effect="plain">[[ records['放假'].length ]]</el-tag></span>
+            <div id="hol-sec">
+              <el-form :model="holForm" size="small" inline :disabled="locked" @submit.native.prevent>
+                <el-form-item label="员工">
+                  <el-select v-model="holForm.staff_ids" multiple filterable collapse-tags
+                             placeholder="可多选" style="width:200px">
+                    <el-option-group v-for="g in staffGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="s in g.list" :key="s.id" :label="s.name" :value="s.id">
+                        <span>[[ s.name ]]</span>
+                        <span class="muted" style="float:right;margin-left:12px">[[ s.group ]]</span>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="类型">
+                  <el-select v-model="holForm.holiday_type" style="width:100px">
+                    <el-option v-for="t in holidayTypes" :key="t" :label="t" :value="t"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="日期">
+                  <el-date-picker v-model="holForm.exc_date" type="date" value-format="yyyy-MM-dd"
+                                  :picker-options="holPicker" placeholder="仅限放假日期" style="width:140px"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="实际工时">
+                  <el-input-number v-model="holForm.actual_hours" :min="0" :step="0.5"
+                                   controls-position="right" style="width:105px"></el-input-number>
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="holForm.note" placeholder="选填" style="width:130px"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="addRecord('放假', holForm)">添加</el-button>
+                </el-form-item>
+              </el-form>
+              <div class="hint-line">
+                <i class="el-icon-info"></i>
+                只能选排班表里已勾选「放」的日期（那天班组整体不计计划工时）。放假期间仍来上班的人在这里按
+                <b>实际时长</b> 登记：来了几小时就填几小时，不按班次标准工时，可精确到 0.5h。
+                本月可登记日期
+                <b v-if="holidayDates.length">[[ holidayDates.length ]] 天</b>
+                <b v-else style="color:#DC2626">尚无（请先在左侧标记放假）</b>
+              </div>
+              <record-table :rows="records['放假']" :columns="holColumns" tone="hol" :locked="locked"
+                            empty="暂无放假日出勤记录" @remove="removeRecord"></record-table>
+            </div>
+          </el-tab-pane>
+
+          <!-- 换班 -->
+          <el-tab-pane name="swap">
+            <span slot="label">换班 <el-tag size="mini" type="success" effect="plain">[[ swaps.length ]]</el-tag></span>
+            <div id="swap-sec">
+              <el-form :model="swapForm" size="small" inline :disabled="locked" @submit.native.prevent>
+                <el-form-item label="员工 A">
+                  <el-select v-model="swapForm.staff_a" filterable placeholder="选择员工" style="width:150px">
+                    <el-option-group v-for="g in swapGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="s in g.list" :key="s.id" :label="s.name" :value="s.id">
+                        <span>[[ s.name ]]</span>
+                        <span class="muted" style="float:right;margin-left:12px">[[ s.group ]]</span>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="员工 B">
+                  <el-select v-model="swapForm.staff_b" filterable placeholder="选择员工" style="width:150px">
+                    <el-option-group v-for="g in swapGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="s in g.list" :key="s.id" :label="s.name" :value="s.id">
+                        <span>[[ s.name ]]</span>
+                        <span class="muted" style="float:right;margin-left:12px">[[ s.group ]]</span>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="日期">
+                  <el-date-picker v-model="swapForm.swap_date" type="date" value-format="yyyy-MM-dd"
+                                  placeholder="换班日期" style="width:140px"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="swapForm.note" placeholder="选填，如：临时顶班" style="width:140px"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="addSwap">登记换班</el-button>
+                </el-form-item>
+              </el-form>
+              <div class="hint-line" style="margin-bottom:8px">
+                <i class="el-icon-info"></i>
+                两人当天互换班次（A 上 B 的班、B 上 A 的班），只影响当事人，不改班组排班；
+                考勤格会标「换」，汇总工时按换后的班型计算。
+              </div>
+              <el-table :data="swaps" size="mini" border style="width:100%" empty-text="本月暂无换班记录">
+                <el-table-column type="index" label="#" width="46" align="center"></el-table-column>
+                <el-table-column prop="date" label="日期" width="110" align="center"></el-table-column>
+                <el-table-column label="员工 A" min-width="150">
+                  <template slot-scope="s">
+                    <strong>[[ s.row.a ]]</strong>
+                    <span class="muted">（[[ s.row.aGroup ]] [[ s.row.aAfter ]]班）</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="员工 B" min-width="150">
+                  <template slot-scope="s">
+                    <strong>[[ s.row.b ]]</strong>
+                    <span class="muted">（[[ s.row.bGroup ]] [[ s.row.bAfter ]]班）</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="note" label="备注" min-width="120">
+                  <template slot-scope="s"><span class="muted">[[ s.row.note || '—' ]]</span></template>
+                </el-table-column>
+                <el-table-column label="操作" width="62" align="center" v-if="!locked">
+                  <template slot-scope="s">
+                    <el-button type="text" size="mini" style="color:#DC2626"
+                               @click="removeSwap(s.row)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
+
+          <!-- 放假安排 -->
+          <el-tab-pane name="holplan">
+            <span slot="label">放假安排 <el-tag size="mini" type="info" effect="plain">[[ holidayPlans.length ]]</el-tag></span>
+            <div id="holplan-sec">
+              <el-form :model="planForm" size="small" inline :disabled="locked" @submit.native.prevent>
+                <el-form-item label="范围">
+                  <el-radio-group v-model="planForm.scope" size="small">
+                    <el-radio-button label="all">全部班组</el-radio-button>
+                    <el-radio-button label="group">指定班组</el-radio-button>
+                    <el-radio-button label="person">指定人员</el-radio-button>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item label="班组" v-if="planForm.scope === 'group'">
+                  <el-select v-model="planForm.group" style="width:96px">
+                    <el-option v-for="g in groups" :key="g" :label="g" :value="g"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="人员" v-if="planForm.scope === 'person'">
+                  <el-select v-model="planForm.staff_ids" multiple filterable collapse-tags
+                             placeholder="可多选" style="width:180px">
+                    <el-option-group v-for="g in staffGroups" :key="g.label" :label="g.label">
+                      <el-option v-for="s in g.list" :key="s.id" :label="s.name" :value="s.id">
+                        <span>[[ s.name ]]</span>
+                        <span class="muted" style="float:right;margin-left:12px">[[ s.group ]]</span>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="日期">
+                  <el-date-picker v-model="planForm.start_date" type="date" value-format="yyyy-MM-dd"
+                                  placeholder="开始" style="width:128px"></el-date-picker>
+                  <span class="muted" style="margin:0 4px">至</span>
+                  <el-date-picker v-model="planForm.end_date" type="date" value-format="yyyy-MM-dd"
+                                  placeholder="同一天可留空" style="width:128px"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="planForm.note" placeholder="选填" style="width:120px"></el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="addHolidayPlan">登记放假</el-button>
+                </el-form-item>
+              </el-form>
+              <div class="hint-line" style="margin-bottom:8px">
+                <i class="el-icon-info"></i>
+                按班组放假写入排班表当日该班组；按人放假只影响本人当天计划出勤，其他人照常。
+              </div>
+              <el-table :data="holidayPlans" size="mini" border style="width:100%"
+                        empty-text="本月暂无放假安排">
+                <el-table-column type="index" label="#" width="46" align="center"></el-table-column>
+                <el-table-column prop="date" label="日期" width="110" align="center"></el-table-column>
+                <el-table-column prop="scope" label="范围" min-width="180">
+                  <template slot-scope="s">
+                    <span class="pill" :class="s.row.kind === 'person' ? 'pill-ot' : 'pill-hol'">
+                      [[ s.row.scope ]]
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="note" label="备注" min-width="120">
+                  <template slot-scope="s"><span class="muted">[[ s.row.note || '—' ]]</span></template>
+                </el-table-column>
+                <el-table-column label="操作" width="62" align="center" v-if="!locked">
+                  <template slot-scope="s">
+                    <el-button type="text" size="mini" style="color:#DC2626"
+                               @click="removeHolidayPlan(s.row)">取消</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+    </div>
+  </div>
+  <!-- 班制设置: 班次定义 + 轮转规则(班型的唯一事实来源) -->
+  <el-dialog title="班制设置" :visible.sync="cfgDialog" width="760px" top="5vh" append-to-body>
+  <div class="cfg-sec">
+    <h4>班次定义 <em>计划工时立即影响未锁定月份的重算</em></h4>
+    <el-table :data="cfgShifts" size="mini" border>
+      <el-table-column prop="code" label="班次" width="70" align="center"></el-table-column>
+      <el-table-column prop="label" label="名称" width="100" align="center"></el-table-column>
+      <el-table-column label="计划工时(h)" width="140" align="center">
+        <template slot-scope="s">
+          <el-input-number v-model="s.row.hours" :min="0" :step="0.5" size="mini"
+                           controls-position="right" style="width:110px"></el-input-number>
+        </template>
+      </el-table-column>
+      <el-table-column label="跨天" width="70" align="center">
+        <template slot-scope="s"><span class="muted">[[ s.row.crossDay ? '是' : '—' ]]</span></template>
+      </el-table-column>
+    </el-table>
+    <div style="margin-top:10px">
+      <el-button size="small" type="primary" :loading="cfgSaving" @click="saveShifts">保存工时</el-button>
+      <span class="muted" style="margin-left:10px">修改后请对需要的月份重新「生成本月排班」</span>
+    </div>
+  </div>
+  <el-divider content-position="left">轮转规则</el-divider>
+  <div class="cfg-sec">
+    <el-table :data="cfgRules" size="mini" border max-height="220">
+      <el-table-column prop="group" label="班组" width="70" align="center"></el-table-column>
+      <el-table-column label="周期" min-width="150">
+        <template slot-scope="s">
+          <span class="rot-cycle">
+            <span v-for="(c, i) in s.row.cycleArr" :key="i" class="rot-cell">[[ c ]]</span>
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="offset" label="偏移" width="56" align="center"></el-table-column>
+      <el-table-column prop="anchor" label="锚点" width="100" align="center"></el-table-column>
+      <el-table-column label="生效区间" width="170" align="center">
+        <template slot-scope="s">[[ s.row.validFrom ]] ~ [[ s.row.validTo || '长期' ]]</template>
+      </el-table-column>
+      <el-table-column label="操作" width="64" align="center">
+        <template slot-scope="s">
+          <el-button v-if="!s.row.validTo" type="text" size="mini" style="color:#DC2626"
+                     @click="endRule(s.row)">结止</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-form :model="ruleForm" size="small" inline style="margin-top:12px" @submit.native.prevent>
+      <el-form-item label="班组">
+        <el-select v-model="ruleForm.group" style="width:90px">
+          <el-option v-for="g in groups" :key="g" :label="g" :value="g"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="周期">
+        <el-input v-model="ruleForm.cycle" placeholder="休,休,白,白,夜,夜" style="width:170px"></el-input>
+      </el-form-item>
+      <el-form-item label="偏移">
+        <el-input-number v-model="ruleForm.offset" :step="1" controls-position="right"
+                         style="width:90px"></el-input-number>
+      </el-form-item>
+      <el-form-item label="锚点">
+        <el-date-picker v-model="ruleForm.anchor" type="date" value-format="yyyy-MM-dd"
+                        placeholder="该天=周期第1位" style="width:150px"></el-date-picker>
+      </el-form-item>
+      <el-form-item label="生效日">
+        <el-date-picker v-model="ruleForm.valid_from" type="date" value-format="yyyy-MM-dd"
+                        placeholder="从此日起" style="width:135px"></el-date-picker>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="addRule">新增规则</el-button>
+      </el-form-item>
+    </el-form>
+    <div class="hint-line">
+      <i class="el-icon-info"></i>
+      周期支持「休,休,白,白,夜,夜」或「休休白白夜夜」；锚点 = 该天按周期第 1 位取班（再加偏移）。
+      同班组按生效日取最新规则，新增规则会自动把旧规则截止到前一天；改完请重新生成本月排班。
+      四班三倒 = 周期写「休,白,夜,白,休,白」这类 4 班循环即可。
+    </div>
+  </div>
+  <div slot="footer">
+    <el-button size="small" @click="cfgDialog = false">关闭</el-button>
+  </div>
+</el-dialog>
+</div>
+
+<!-- 三张记录表共用的表格模板 -->
+<script type="text/x-template" id="tpl-record-table">
+  <div>
+    <div class="toolbar" style="padding:2px 0 10px">
+      <el-input v-model="keyword" size="small" clearable prefix-icon="el-icon-search"
+                placeholder="搜索姓名或备注" style="width:190px"></el-input>
+      <span class="muted">共 [[ filtered.length ]] 条</span>
+    </div>
+    <el-table :data="pageRows" size="mini" border style="width:100%" :empty-text="empty">
+      <el-table-column type="index" label="#" width="46" align="center"
+                       :index="indexOf"></el-table-column>
+      <el-table-column v-for="c in columns" :key="c.prop" :prop="c.prop" :label="c.label"
+                       :width="c.width" :align="c.align || 'center'" :sortable="!!c.sortable">
+        <template slot-scope="scope">
+          <strong v-if="c.type === 'name'">[[ scope.row.name ]]</strong>
+          <span v-else-if="c.type === 'group'">
+            <span class="dot" style="background:#C0C4CC"></span>[[ scope.row.group ]]
+          </span>
+          <span v-else-if="c.type === 'minus'" class="num" style="color:#DC2626">-[[ scope.row[c.prop] ]]</span>
+          <span v-else-if="c.type === 'plus'" class="num" style="color:#0E9F6E">+[[ scope.row[c.prop] ]]</span>
+          <span v-else-if="c.type === 'pill'" class="pill" :class="'pill-' + tone">[[ scope.row[c.prop] ]]</span>
+          <span v-else-if="c.type === 'note'" class="muted">[[ scope.row[c.prop] || '—' ]]</span>
+          <span v-else class="num">[[ scope.row[c.prop] ]]</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="62" align="center" v-if="!locked">
+        <template slot-scope="scope">
+          <el-button type="text" size="mini" style="color:#DC2626"
+                     @click="$emit('remove', scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="pager" v-if="filtered.length > size">
+      <el-pagination layout="total, prev, pager, next" :total="filtered.length" :page-size="size"
+                     :current-page.sync="page"></el-pagination>
+    </div>
+  </div>
+</script>
+    </div>
+
+    <script>window.PAGE = {{ page|tojson }};</script>
+<script src="{{ url_for('static', filename='vendor/att/vue.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/att/element-ui/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/request.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js02/att_common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js02/att_page_schedule.js') }}?v=20261119"></script>
+</body>
+</html>

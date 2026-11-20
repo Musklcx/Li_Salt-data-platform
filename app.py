@@ -10,7 +10,6 @@
   - unitcost_bp  （unitcost_bp.py） 辅料包材单耗
   - hazard_bp    （hazard_bp.py）   30吨蒸发问题汇总
   - notice_bp    （notice_bp.py）   班组工作量（通知公示）
-  - staff_bp     （staff_bp.py）    人员概况
   - download_bp  （download_bp.py） 下载专区
   - saferisks_bp （saferisks_bp.py）安全隐患整改台账
 统一数据访问：db.py（主库 db_day.db）；users.db 归 auth.py、db_balance.db 归 inventory_bp.py
@@ -23,7 +22,6 @@ from inventory_bp import inventory_bp, init_inventory_db
 from data_bp import data_bp
 from hazard_bp import hazard_bp
 from notice_bp import notice_bp
-from staff_bp import staff_bp
 from download_bp import download_bp
 from saferisks_bp import saferisks_bp
 from utilities_bp import utilities_bp
@@ -32,6 +30,12 @@ from db import close_db, DB_FILE
 from logs_bp import logs_bp
 from docs_bp import docs_bp
 from logger import init_logging
+from attendance import config as att_config
+from attendance.db import init_db as init_attendance_db, close_db as close_attendance_db, \
+    backup_db as backup_attendance_db
+from attendance.views_att import bp as att_bp
+from attendance.views_sched import bp as att_sched_bp
+from attendance.views_staff import bp as att_staff_bp
 
 app = Flask(__name__)
 
@@ -66,16 +70,40 @@ app.register_blueprint(inventory_bp)
 app.register_blueprint(data_bp)
 app.register_blueprint(hazard_bp)
 app.register_blueprint(notice_bp)
-app.register_blueprint(staff_bp)
 app.register_blueprint(download_bp)
 app.register_blueprint(saferisks_bp)
 app.register_blueprint(utilities_bp)
 app.register_blueprint(unitcost_bp)
 app.register_blueprint(logs_bp)
 app.register_blueprint(docs_bp)
+# 考勤模块（自 Attendance 项目迁入，页面挂 /att 前缀）
+app.register_blueprint(att_bp)
+app.register_blueprint(att_sched_bp)
+app.register_blueprint(att_staff_bp)
+app.config['UPLOAD_FOLDER'] = att_config.UPLOAD_FOLDER   # 考勤头像上传目录
+
+# 考勤库每日备份：每进程每天第一次请求时做一次（备份失败不影响业务）
+_att_backup_day = {'day': None}
+
+
+@app.before_request
+def _attendance_daily_backup():
+    from datetime import date as _d
+    today = _d.today()
+    if _att_backup_day['day'] == today:
+        return
+    _att_backup_day['day'] = today
+    try:
+        backup_attendance_db()
+    except Exception:
+        pass
 
 # ---- 统一数据库连接：请求结束自动关闭（db.py）----
 app.teardown_appcontext(close_db)
+app.teardown_appcontext(close_attendance_db)   # 考勤库连接（g.att_db）
+
+# 考勤库导入即初始化（建表/补字段/建索引/播种班制配置, 幂等）
+init_attendance_db()
 
 # ========== 全局登录拦截：除白名单外，页面与接口一律要求已登录 ==========
 PUBLIC_PATHS = {
@@ -83,10 +111,13 @@ PUBLIC_PATHS = {
     '/api/login', '/api/register', '/api/register/send-code',
 }
 
-# 只有管理员能访问的路径前缀（期末金属量盘点整组 + 运行日志/监控 + 接口文档 + 用户管理）
+# 只有管理员能访问的路径前缀（期末金属量盘点整组 + 运行日志/监控 + 接口文档 + 用户管理
+# + 考勤模块的月度考勤/排班与异动两页及其接口；人员管理 /att/staff 不受限）
 ADMIN_ONLY_PREFIXES = ('/inventory', '/api/state', '/api/rows', '/api/unlock', '/api/periods', '/api/import',
                        '/logs', '/api/logs', '/api/health', '/docs', '/api/docs', '/users', '/api/users',
-                       '/api/checkcard')
+                       '/api/checkcard',
+                       '/att/attendance', '/att/month/lock', '/att/adjustment',
+                       '/att/schedule', '/att/exception')
 
 
 @app.before_request

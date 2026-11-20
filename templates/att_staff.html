@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锂盐车间共享平台 - 人员信息</title>
+    <!-- Element UI 主题（墨绿定制版，考勤模块专用 Vue2 + Element UI） -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/att/element-ui/index-brand.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}?v=20261119 }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/attendance.css') }}?v=20261118">
+    <style>
+        body {
+            background: #f4f7fa;
+            padding: 16px;
+            margin: 0;
+            font-family: "Microsoft Yahei", sans-serif;
+            font-size: 14px;
+            color: #1F2937;
+        }
+        .top-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            background: #eee;
+            color: #333;
+            text-decoration: none;
+            font-size: 16px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .nav-tab.active {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .nav-dropdown {
+            position: relative;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #888;
+            min-width: 220px;
+            z-index: 999;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background: #666;
+        }
+        /* 考勤模块内容区：复用原系统卡片风格，接在 Workweb 顶导航之下 */
+        .att-content { padding: 4px 2px 30px; }
+        .att-content #app.fill-screen { height: calc(100vh - 130px); }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航（与全站一致；人员管理组高亮） -->
+    <div class="top-nav">
+        <div class="nav-tab nav-dropdown">
+            数据对比 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/data">数据对比</a>
+                <a href="/utilities">水电汽耗</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            现场问题 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/hazard">30吨蒸发问题汇总</a>
+                <a href="/saferisks">安全隐患整改</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown">
+            信息公示 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/notice">班组工作量</a>
+                <a href="/inventory">期末金属量</a>
+                <a href="/unitcost">辅料包材</a>
+            </div>
+        </div>
+        <div class="nav-tab nav-dropdown active">
+            人员管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/att/attendance">考勤记录</a>
+                <a href="/att/schedule">排班与异动</a>
+                <a href="/att/staff">人员信息</a>
+            </div>
+        </div>
+        <a href="/download" class="nav-tab">下载专区</a>
+        <div class="nav-tab nav-dropdown">
+            系统管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/users">用户管理</a>
+                <a href="/docs">接口文档</a>
+                <a href="/logs">运行日志</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 内容区（自 Attendance 项目迁入，功能与交互保持不变） -->
+    <div class="att-content">
+<div id="app" v-cloak>
+  <div class="page-head">
+    <div>
+      <h2>人员信息</h2>
+      <div class="sub">在职 [[ total.onDuty ]] 人 · 离职 [[ total.left ]] 人</div>
+    </div>
+    <div class="actions">
+      <el-input v-model="keyword" size="small" clearable prefix-icon="el-icon-search"
+                placeholder="搜索姓名 / 工牌号 / 职位" style="width:230px"></el-input>
+      <el-button v-if="!unlocked" type="primary" size="small"
+                 @click="toggleLock">🔓 解锁编辑</el-button>
+      <el-button v-else type="danger" size="small" plain
+                 @click="toggleLock">🔒 锁定</el-button>
+      <el-button type="primary" size="small" icon="el-icon-plus" @click="openAdd">新增员工</el-button>
+    </div>
+  </div>
+
+  <div class="card">
+    <el-tabs v-model="activeGroup" style="padding:0 14px">
+      <el-tab-pane v-for="m in memberTabs" :key="m.group" :name="m.group">
+        <span slot="label">
+          <span class="dot" :style="{background: groupColor(m.group)}"></span>
+          [[ m.group ]] <span class="muted">[[ m.list.length ]]</span>
+        </span>
+
+        <el-table :data="filterRows(m.list)" size="mini" border style="width:100%"
+                  :empty-text="m.all ? '暂无人员' : '该班组暂无人员'">
+          <el-table-column v-if="m.all" label="班组" width="78" align="center">
+            <template slot-scope="scope">
+              <span class="dot" :style="{background: groupColor(scope.row.group)}"></span>
+              [[ scope.row.group ]]
+            </template>
+          </el-table-column>
+          <el-table-column label="头像" width="62" align="center">
+            <template slot-scope="scope">
+              <img v-if="scope.row.photo" class="avatar" :src="photoUrl(scope.row.photo)" alt="">
+              <div v-else class="avatar">[[ scope.row.name.charAt(0) ]]</div>
+            </template>
+          </el-table-column>
+          <el-table-column label="工牌ID" width="118">
+            <template slot-scope="scope"><span class="mono">[[ scope.row.badge || '—' ]]</span></template>
+          </el-table-column>
+          <el-table-column label="姓名" width="96">
+            <template slot-scope="scope">
+              <strong>[[ scope.row.name ]]</strong>
+              <el-tag v-if="scope.row.status !== '在职'" size="mini" type="info"
+                      style="margin-left:4px">离职</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="gender" label="性别" width="60" align="center"></el-table-column>
+          <el-table-column label="年龄" width="56" align="center">
+            <template slot-scope="scope">
+              <span v-if="scope.row.age != null">[[ scope.row.age ]]</span>
+              <span v-else class="muted">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="职位" min-width="110">
+            <template slot-scope="scope">[[ scope.row.position || '—' ]]</template>
+          </el-table-column>
+          <el-table-column label="班次" width="94" align="center">
+            <template slot-scope="scope">
+              <el-tag size="mini" :type="scope.row.shift === '白班制' ? 'success' : ''" effect="plain">
+                [[ scope.row.shift ]]
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="衣服" width="70" align="center">
+            <template slot-scope="scope">[[ scope.row.cloth || '—' ]]</template>
+          </el-table-column>
+          <el-table-column label="鞋码" width="64" align="center">
+            <template slot-scope="scope">[[ scope.row.shoe || '—' ]]</template>
+          </el-table-column>
+          <el-table-column label="安全帽" width="76" align="center">
+            <template slot-scope="scope">[[ scope.row.helmet || '—' ]]</template>
+          </el-table-column>
+          <el-table-column label="汇报对象" width="110">
+            <template slot-scope="scope">
+              <span v-if="scope.row.reportName">[[ scope.row.reportName ]]</span>
+              <span v-else class="muted">未设置</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="在职区间" width="186" align="center">
+            <template slot-scope="scope">
+              <span class="mono">[[ scope.row.hireDate || '—' ]]</span>
+              <span class="muted"> ~ [[ scope.row.leaveDate || '至今' ]]</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="176" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="mini" @click="openEdit(scope.row)">编辑</el-button>
+              <el-button type="text" size="mini" @click="openGroupChange(scope.row)">调组</el-button>
+              <el-dropdown size="mini" trigger="click" style="margin-left:8px"
+                           @command="function (c) { onCmd(c, scope.row); }">
+                <el-button type="text" size="mini">更多<i class="el-icon-arrow-down"></i></el-button>
+                <el-dropdown-menu slot="dropdown">
+                  <el-dropdown-item command="swap">两人对调</el-dropdown-item>
+                  <el-dropdown-item command="hist">班组履历</el-dropdown-item>
+                  <el-dropdown-item command="leave" v-if="scope.row.status === '在职'">办理离职</el-dropdown-item>
+                  <el-dropdown-item command="rejoin" v-else>复职</el-dropdown-item>
+                  <el-dropdown-item command="remove" divided>移除</el-dropdown-item>
+                </el-dropdown-menu>
+              </el-dropdown>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
+  </div>
+
+  <!-- 新增 / 编辑 -->
+  <el-dialog :title="dialog.edit ? '编辑员工' : '新增员工'" :visible.sync="dialog.visible"
+             width="640px" :close-on-click-modal="false" @closed="onDialogClosed">
+    <el-form ref="form" :model="form" :rules="rules" label-width="82px" size="small">
+      <el-row :gutter="12">
+        <el-col v-if="dialog.edit" :span="7">
+          <el-form-item label="头像" label-width="56px">
+            <el-upload class="avatar-uploader avatar-uploader-xl" action="#" :show-file-list="false"
+                       :auto-upload="false" accept="image/*" :on-change="onPhotoChange">
+              <img v-if="photoPreview" class="avatar avatar-xl" :src="photoPreview" alt="">
+              <div v-else class="avatar avatar-xl">[[ form.name ? form.name.charAt(0) : '+' ]]</div>
+            </el-upload>
+            <div class="muted upload-tip">点击上传，支持 jpg/png/gif，不超过 2MB</div>
+          </el-form-item>
+        </el-col>
+        <el-col :span="dialog.edit ? 17 : 24">
+          <el-row :gutter="10">
+            <el-col :span="14">
+              <el-form-item label="姓名" prop="name">
+                <el-input v-model="form.name" placeholder="必填"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="10">
+              <el-form-item label="性别">
+                <el-select v-model="form.gender" clearable placeholder="—" style="width:100%">
+                  <el-option value="男" label="男"></el-option>
+                  <el-option value="女" label="女"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="10">
+            <el-col :span="14">
+              <el-form-item label="工牌ID">
+                <el-input v-model="form.badge_id"
+                          :placeholder="dialog.edit ? '' : '留空则自动生成'"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="10">
+              <el-form-item label="年龄">
+                <el-input v-model="form.age" placeholder="岁" maxlength="3"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="10">
+            <el-col :span="14">
+              <el-form-item label="职位">
+                <el-input v-model="form.position" placeholder="如：中控 / 班长"></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="10">
+              <el-form-item label="汇报对象">
+                <el-select v-model="form.report_to" clearable placeholder="—" style="width:100%"
+                           filterable>
+                  <el-option v-for="p in reporters" :key="p.id" :value="p.id"
+                             :label="p.name + '（' + p.position + '）'"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="10">
+            <el-col :span="12">
+              <el-form-item label="班组">
+                <el-select v-model="form.group" :disabled="dialog.edit" style="width:100%">
+                  <el-option v-for="g in groups" :key="g" :value="g" :label="g"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="班次">
+                <el-select v-model="form.shift_type" style="width:100%">
+                  <el-option value="倒班制" label="倒班制"></el-option>
+                  <el-option value="白班制" label="白班制"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-col>
+      </el-row>
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="入职日期">
+            <el-date-picker v-model="form.hire" type="date" value-format="yyyy-MM-dd"
+                            placeholder="必填" style="width:100%"></el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="离职日期">
+            <el-date-picker v-model="form.leave" type="date" value-format="yyyy-MM-dd"
+                            placeholder="在职留空" style="width:100%"></el-date-picker>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <div class="hint-line" style="margin:-6px 0 10px">
+        <i class="el-icon-info"></i>
+        在职区间为「入职日期 ~ 离职日期（含）」，区间外不计出勤；调组请用列表里的「调组」，会自动留下履历。
+      </div>
+      <el-row :gutter="10">
+        <el-col :span="8">
+          <el-form-item label="衣服尺码">
+            <el-input v-model="form.cloth_size" placeholder="170"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="鞋码">
+            <el-input v-model="form.shoe_size" placeholder="42"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="安全帽号">
+            <el-input v-model="form.helmet_size" placeholder="001"></el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+    <div slot="footer">
+      <el-button size="small" @click="dialog.visible = false">取消</el-button>
+      <el-button size="small" type="primary" :loading="saving" @click="save">保存</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 调组 -->
+  <el-dialog title="调整班组（写入履历）" :visible.sync="groupDialog.visible" width="470px"
+             :close-on-click-modal="false">
+    <div class="hint-line" style="margin-bottom:12px">
+      <i class="el-icon-info"></i>
+      <b>[[ groupDialog.name ]]</b> 当前 <b>[[ groupDialog.from ]]</b>，调整后考勤从生效日起按新班组班型重算，
+      之前的日子仍按原班组。
+    </div>
+    <el-form size="small" label-width="80px">
+      <el-form-item label="生效日期">
+        <el-date-picker v-model="groupForm.eff_date" type="date" value-format="yyyy-MM-dd"
+                        style="width:100%"></el-date-picker>
+      </el-form-item>
+      <el-form-item label="目标班组">
+        <el-select v-model="groupForm.group" placeholder="选择班组" style="width:100%">
+          <el-option v-for="g in groups" :key="g" :value="g" :label="g"
+                     :disabled="g === groupDialog.from"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="原因">
+        <el-input v-model="groupForm.note" placeholder="选填，如：支援丙班"></el-input>
+      </el-form-item>
+    </el-form>
+    <div slot="footer">
+      <el-button size="small" @click="groupDialog.visible = false">取消</el-button>
+      <el-button size="small" type="primary" @click="submitGroupChange">确认调组</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 两人对调 -->
+  <el-dialog title="两人班组成员对调" :visible.sync="swapDialog.visible" width="520px"
+             :close-on-click-modal="false">
+    <div class="hint-line" style="margin-bottom:12px">
+      <i class="el-icon-info"></i>
+      <b>[[ swapDialog.name ]]</b>（[[ swapDialog.from ]]）与对方互换班组，双方同时生效，考勤各按当时班组重算。
+    </div>
+    <el-form size="small" label-width="80px">
+      <el-form-item label="对调对象">
+        <el-select v-model="swapForm.other_id" filterable placeholder="选择对方员工" style="width:100%">
+          <el-option v-for="s in swapCandidates" :key="s.id"
+                     :label="s.name + ' · ' + s.group" :value="s.id"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="生效日期">
+        <el-date-picker v-model="swapForm.eff_date" type="date" value-format="yyyy-MM-dd"
+                        style="width:100%"></el-date-picker>
+      </el-form-item>
+      <el-form-item label="原因">
+        <el-input v-model="swapForm.note" placeholder="选填，如：班组人员调剂"></el-input>
+      </el-form-item>
+    </el-form>
+    <div slot="footer">
+      <el-button size="small" @click="swapDialog.visible = false">取消</el-button>
+      <el-button size="small" type="primary" @click="submitGroupSwap">确认对调</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 班组履历 -->
+  <el-dialog :title="histDialog.name + ' · 班组履历'" :visible.sync="histDialog.visible" width="560px">
+    <el-table :data="histDialog.rows" size="mini" border max-height="320" empty-text="暂无履历">
+      <el-table-column prop="group" label="班组" width="90" align="center"></el-table-column>
+      <el-table-column prop="start" label="开始" width="110" align="center"></el-table-column>
+      <el-table-column label="结束" width="110" align="center">
+        <template slot-scope="s">[[ s.row.end || '至今' ]]</template>
+      </el-table-column>
+      <el-table-column prop="type" label="类型" width="72" align="center"></el-table-column>
+      <el-table-column prop="note" label="备注" min-width="120">
+        <template slot-scope="s"><span class="muted">[[ s.row.note || '—' ]]</span></template>
+      </el-table-column>
+    </el-table>
+    <div class="hint-line" style="margin-top:10px">
+      <i class="el-icon-info"></i>考勤表的每一天都按上表「当天所属班组」的班型计算。
+    </div>
+  </el-dialog>
+
+  <!-- 办理离职 -->
+  <el-dialog title="办理离职" :visible.sync="leaveDialog.visible" width="420px" :close-on-click-modal="false">
+    <div class="hint-line" style="margin-bottom:12px">
+      <i class="el-icon-warning-outline"></i>
+      <b>[[ leaveDialog.name ]]</b> 从离职日期次日起不再产生出勤；离职当月仍会出现在考勤表里。
+    </div>
+    <el-form size="small" label-width="80px">
+      <el-form-item label="离职日期">
+        <el-date-picker v-model="leaveDialog.date" type="date" value-format="yyyy-MM-dd"
+                        placeholder="最后在职日" style="width:100%"></el-date-picker>
+      </el-form-item>
+    </el-form>
+    <div slot="footer">
+      <el-button size="small" @click="leaveDialog.visible = false">取消</el-button>
+      <el-button size="small" type="primary" @click="submitLeave">确认离职</el-button>
+    </div>
+  </el-dialog>
+</div>
+    </div>
+
+    <script>window.PAGE = {{ page|tojson }};</script>
+    <script>window.STATIC = "{{ url_for('static', filename='') }}";</script>
+<script src="{{ url_for('static', filename='vendor/att/vue.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/att/element-ui/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/request.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/nav_guard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js02/att_common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js02/att_page_staff.js') }}?v=20261118b"></script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+/* =========================================================
+   考勤模块样式（自 Attendance 项目迁入 Workweb，2026/11/18）
+   - 布局: 已由原"左侧深色导航"改为 Workweb 统一顶部导航，
+     侧边栏骨架样式(.shell/.aside/.topbar)已移除
+   - 内容区样式(卡片/KPI/考勤格子/表格/对话框)全部保留，
+     主色已统一为项目蓝 #205493（Element UI 主题 index-brand.css 同步重映射）
+   - 工作区基准: body 由模板内联样式接管（与 Workweb 其它页面一致）
+   ========================================================= */
+:root {
+  --brand: #205493;
+  --brand-2: #1A4275;
+  --brand-soft: #EAF1F9;
+  --ink: #1F2937;
+  --ink-2: #4B5563;
+  --ink-3: #909399;
+  --line: #EBEEF5;
+  --line-2: #F2F4F7;
+  --bg: #F5F7FA;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 6px 18px rgba(16, 24, 40, .05);
+  /* 考勤状态色 */
+  --day-bg: #EAF2FD;  --day-fg: #1D4ED8;
+  --night-bg: #F1ECFE; --night-fg: #6D28D9;
+  --leave-bg: #FDEBF3; --leave-fg: #BE185D;
+  --ot-bg: #FFF1E6;   --ot-fg: #C2410C;
+  --hol-bg: #FDE7E7;  --hol-fg: #DC2626;
+  --rest-fg: #C0C4CC;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+/* ---------- 页头 / 卡片 ---------- */
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.page-head h2 { font-size: 19px; margin: 0; font-weight: 650; letter-spacing: .3px; }
+.page-head .sub { color: var(--ink-3); font-size: 12.5px; margin-top: 5px; }
+.page-head .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; justify-content: flex-end; }
+/* 原生月份选择框(与 notice/unitcost 统一) */
+.page-head .actions input[type="month"].month-native {
+  font-size: 13px; padding: 5px 8px; border: 1px solid #dde0e6;
+  border-radius: 6px; color: #444; font-family: inherit; background: #fff;
+  height: 32px; line-height: normal;
+}
+
+.card {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card + .card { margin-top: 14px; }
+/* 左右并排布局(如排班页 .split)中卡片不应有垂直间距, 保证顶/底对齐 */
+.split > .card + .card { margin-top: 0; }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line-2);
+}
+.card-head h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.card-head h3 em { font-style: normal; font-weight: 400; color: var(--ink-3); font-size: 12px; }
+.card-body { padding: 14px; }
+.card-body.tight { padding: 10px 12px; }
+
+/* ---------- KPI ---------- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.kpi {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 13px 15px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.kpi .k-label { font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 5px; }
+.kpi .k-value { font-size: 23px; font-weight: 700; letter-spacing: .5px; margin-top: 6px; line-height: 1.1; }
+.kpi .k-unit { font-size: 12px; font-weight: 400; color: var(--ink-3); margin-left: 3px; }
+.kpi .k-foot { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+.kpi.is-brand .k-value { color: var(--brand); }
+.kpi.is-day .k-value { color: var(--day-fg); }
+.kpi.is-night .k-value { color: var(--night-fg); }
+.kpi.is-ot .k-value { color: var(--ot-fg); }
+.kpi.is-leave .k-value { color: var(--leave-fg); }
+
+/* ---------- 班制分组条 ---------- */
+.typebar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;
+  padding: 8px 14px; margin-bottom: 14px;
+  background: var(--surface-2, #F7F8F9);
+  border: 1px solid var(--line, #E5E7EB); border-radius: 8px;
+  font-size: 12px; color: var(--ink-3);
+}
+.typebar .tb-title { font-weight: 600; color: var(--ink-2); letter-spacing: .3px; }
+.typebar .tb-item { display: inline-flex; align-items: baseline; gap: 10px; }
+.typebar .tb-item b { font-size: 12.5px; color: var(--ink-1); font-weight: 600; }
+.typebar .tb-item em { font-style: normal; font-variant-numeric: tabular-nums; }
+.typebar .tb-note { margin-left: auto; font-size: 11.5px; color: var(--ink-4, #98A2B3); }
+
+/* ---------- 考勤格子 ---------- */
+.chip {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 22px; line-height: 1; border-radius: 4px;
+  font-size: 11.5px; font-weight: 600;
+  font-variant-numeric: tabular-nums; text-align: center;
+}
+.chip > .v { display: block; }
+.chip > .mk { display: block; font-size: 9px; font-weight: 500; line-height: 1.15; margin-top: 1px; }
+.chip .mk.leave { color: #BE185D; }
+.chip .mk.ot { color: #C2410C; }
+.chip .mk.adj { color: #6B7280; }
+.chip.day { background: var(--day-bg); color: var(--day-fg); }
+.chip.night { background: var(--night-bg); color: var(--night-fg); }
+.chip.leave { background: var(--leave-bg); color: var(--leave-fg); font-weight: 500; }
+.chip.ot { background: var(--ot-bg); color: var(--ot-fg); }
+.chip.hol { background: var(--hol-bg); color: var(--hol-fg); }
+.chip.rest { background: transparent; color: var(--rest-fg); font-weight: 400; }
+.chip.legacy { background: #F4F4F5; color: var(--ink-2); font-weight: 500; }
+.chip.off { background: transparent; color: #C8CDD4; font-weight: 400; }
+.chip .mk.swap { color: #0F766E; font-weight: 700; }
+
+/* 排班表班型文字 */
+.shift-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.shift-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
+.shift-clickable { cursor: pointer; padding: 2px 7px; border-radius: 5px; transition: background .15s; }
+.shift-clickable:hover { background: rgba(31, 91, 85, .08); }
+.shift-白 { color: #0E9F6E; }
+.shift-夜 { color: #5B3FD6; }
+.shift-休 { color: #B0B6BE; }
+.shift-holiday { color: var(--hol-fg); }
+
+/* ---------- 图例 ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 12px 2px 0; font-size: 12px; color: var(--ink-2); }
+.legend .item { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 14px; height: 14px; border-radius: 3px; }
+.legend .mk-sample { font-size: 10px; font-weight: 600; background: #F7F8FA; border-radius: 3px; padding: 1px 4px; }
+
+/* ---------- Element UI 微调 ---------- */
+.el-table { font-size: 13px; color: var(--ink); }
+/* 表头底色/文字色已由 ui-unify.css 统一（深蓝 #205493 + 白字），
+   此处不再覆盖 .el-table th 背景（原 #F7F9FA 浅色遗产规则已删除，
+   日期列配套样式见下方 .th-day 系列） */
+.el-table th.is-leaf { border-bottom: 1px solid var(--line); }
+.el-table td, .el-table th { padding: 5px 0; }
+.el-table--mini td, .el-table--mini th { padding: 3px 0; }
+.el-table .cell { padding: 0 6px; }
+.el-table__body tr:hover > td { background: #F7FBFA !important; }
+.el-table::before { display: none; }
+.el-table__fixed-right::before, .el-table__fixed::before { display: none; }
+.el-table__fixed, .el-table__fixed-right { box-shadow: 2px 0 8px -4px rgba(16, 24, 40, .18); }
+.el-table__fixed-right { box-shadow: -2px 0 8px -4px rgba(16, 24, 40, .18); }
+
+/* 表头: 日期 + 星期 两行 */
+/* 覆盖 Element 自带的 .el-table th div { line-height:40px }，否则日期表头被撑到 ~69px */
+/* 统一深蓝表头(#205493)下的日期列配套色（页面层在 ui-unify.css 之后加载，可覆盖） */
+.th-day, .th-day .d, .th-day .w { display: block; padding: 0; line-height: 1.25; white-space: nowrap; }
+.th-day { line-height: 1.35; padding: 3px 0 2px; border-radius: 6px; }
+.th-day .d { font-size: 12.5px; font-weight: 600; color: #FFFFFF; }
+.th-day .w { font-size: 10.5px; color: rgba(255,255,255,.72); }
+.th-day.is-weekend .d { color: rgb(120, 240, 150); }
+.th-day.is-weekend .w { color: rgb(120, 240, 150); }
+.th-day.is-today { background: #FFFFFF; }
+.th-day.is-today .d { color: #205493; }
+.th-day.is-today .w { color: #5A7BA6; }
+.th-day.is-future .d, .th-day.is-future .w { color: rgba(255,255,255,.45); }
+.th-day.is-weekend.is-future .d { color: rgba(255,201,196,.55); }
+.th-day.is-weekend.is-future .w { color: rgba(255,201,196,.4); }
+
+.el-table td.wk { background: #FAFBFC; }
+.el-table td.wk-today { background: rgba(32, 84, 147, .07) !important; }
+
+/* 考勤页紧凑模式: 一屏显示更多行 */
+.card.compact .el-table--mini td, .card.compact .el-table--mini th { padding: 2px 0; }
+.card.compact .chip { height: 22px; line-height: 1; font-size: 11px; }
+.card.compact .chip > .mk { font-size: 8.5px; }
+.card.compact .th-day { padding: 2px 0 1px; }
+.el-table th.wk-head { background: #1A4275 !important; }
+.el-table .el-table__fixed td.wk { background: #FAFBFC; }
+
+/* 避免 Vue 渲染前的闪屏 */
+[v-cloak] { display: none !important; }
+
+/* 对话框 / 表单 */
+.el-dialog__header { padding: 16px 20px 12px; border-bottom: 1px solid var(--line-2); }
+.el-dialog__title { font-size: 15px; font-weight: 600; }
+.el-dialog__body { padding: 18px 20px 6px; }
+.el-dialog__footer { padding: 12px 20px 16px; }
+.el-form-item__label { font-size: 13px; color: var(--ink-2); padding-bottom: 4px !important; }
+.el-tabs__item { font-size: 13.5px; }
+.el-tabs__header { margin-bottom: 12px; }
+.el-pagination { padding: 8px 12px; }
+.el-button--text { color: var(--brand); }
+
+/* 头像 */
+.avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #EEF1F5; display: flex; align-items: center; justify-content: center; color: #8A94A6; font-size: 13px; font-weight: 600; }
+.avatar-uploader .el-upload { border: 1px dashed #D3D9E2; border-radius: 8px; cursor: pointer; width: 76px; height: 76px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #FAFBFC; }
+.avatar-uploader .el-upload:hover { border-color: var(--brand); }
+.avatar-uploader .avatar-lg { width: 76px; height: 76px; border-radius: 0; font-size: 22px; }
+.avatar-uploader i { font-size: 20px; color: #A6AFBE; }
+/* 弹窗内放大头像 */
+.avatar-uploader-xl .el-upload { width: 122px; height: 152px; }
+.avatar-uploader-xl .avatar-xl { width: 122px; height: 152px; border-radius: 6px; font-size: 34px; }
+.upload-tip { max-width: 150px; line-height: 1.5; margin-top: 6px; font-size: 12px; }
+
+/* ---------- 排班页 ---------- */
+.split { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 18px; align-items: start;margin-top: 8px;}
+@media (max-width: 1180px) { .split { grid-template-columns: 1fr; } }
+
+/* ---------- 排班页: 整页锁定一屏, 内部各自滚动 ---------- */
+/* 58=顶栏 18+44=内容区上下留白, #app 高度固定 → 页面不出现整体滚动 */
+#app.fill-screen { height: calc(100vh - 120px); min-height: 460px; display: flex; flex-direction: column; }
+#app.fill-screen .page-head { flex: none; }
+#app.fill-screen .split { flex: 1; min-height: 0; align-items: stretch; }
+#app.fill-screen .split > .card { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+#app.fill-screen .split > .card > .card-head { flex: none; }
+/* 左卡: 日历表占满剩余高度, 内部滚动; 图例固定在卡片底部 */
+#app.fill-screen .cal-wrap { flex: 1; min-height: 0; }
+#app.fill-screen .card > .legend { flex: none; }
+/* 右卡: 表单+记录表区域超出时在卡片内部滚动, 卡片高度不随内容变化 */
+#app.fill-screen .split > .card > .card-body { flex: 1; min-height: 0; overflow: auto; }
+/* 日历空行填充: 内容不足时补到底, 样式弱化 */
+.el-table tr.is-filler td { background: #FBFCFC; }
+.el-table tr.is-filler:hover > td { background: #FBFCFC !important; }
+
+.cal-date { font-weight: 600; font-variant-numeric: tabular-nums; }
+.cal-date .w { color: var(--ink-3); font-size: 11px; margin-left: 4px; font-weight: 400; }
+.cal-date.is-weekend { color: #C0362C; }
+.cal-date.is-today { background: var(--brand-soft); color: var(--brand); padding: 1px 6px; border-radius: 4px; }
+
+.pill {
+  display: inline-block; padding: 0 7px; height: 20px; line-height: 20px;
+  border-radius: 10px; font-size: 11.5px; white-space: nowrap;
+}
+.pill-leave { background: var(--leave-bg); color: var(--leave-fg); }
+.pill-ot { background: var(--ot-bg); color: var(--ot-fg); }
+.pill-hol { background: var(--hol-bg); color: var(--hol-fg); }
+
+.hint-line {
+  font-size: 12px; color: var(--ink-3); background: #FAFBFC;
+  border: 1px dashed #DCE1E8; border-radius: 6px;
+  padding: 6px 10px; margin-bottom: 10px;
+}
+.hint-line b { color: var(--ink-2); }
+
+/* ---------- 连续登记: 提交前预览 ---------- */
+.pv-box {
+  margin: 0 0 12px; padding: 10px 12px;
+  background: #F5F8FC; border: 1px solid #D8E4F2; border-left: 3px solid var(--brand);
+  border-radius: 8px;
+}
+.pv-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.pv-head i { color: var(--brand); }
+.pv-head b { font-weight: 600; color: var(--ink); }
+.pv-head .muted { margin-left: 4px; }
+.pv-lines { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); line-height: 1.85; }
+.pv-days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pv-day {
+  font-size: 11.5px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.pv-day.is-add { background: var(--day-bg); color: var(--day-fg); border-color: #D6E4FB; }
+.pv-day.is-rest { background: #F5F6F8; color: var(--ink-3); border-color: #E7E9EE; text-decoration: line-through; }
+.pv-day.is-exist { background: var(--leave-bg); color: var(--leave-fg); border-color: #F8D7E5; }
+.pv-day.is-off { background: #FFF7E6; color: #B45309; border-color: #FBE2B7; }
+.pager { display: flex; justify-content: flex-end; padding-top: 8px; }
+.el-table .weekend-row td { background: #FCFCFD; }
+
+/* ---------- 空状态 ---------- */
+.empty { padding: 22px 0; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+/* 杂项 */
+.muted { color: var(--ink-3); font-size: 12px; }
+.mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 12px; color: var(--ink-3); }
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grow { flex: 1; }
+.right { margin-left: auto; }
+
+/* ============ 班制设置弹窗 ============ */
+.cfg-sec h4 { margin: 0 0 10px; font-size: 14px; }
+.cfg-sec h4 em { font-style: normal; font-weight: 400; font-size: 12px; color: #8A94A3; margin-left: 8px; }
+.rot-cycle { display: inline-flex; gap: 3px; }
+.rot-cell {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 3px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; background: #EEF2F5; color: #47505C;
+}
+/* 未发生的未来日期: 只显示计划, 灰显 */
+.chip.future { background: #F1F3F6; color: #A6AFBE; font-weight: 500; }
+.chip.future > .mk.swap { color: #0F766E; }
+
+/* 未来日期列: 表头与整列轻微灰显 */
+.th-day.is-future { color: #A6AFBE; }
+.el-table .fut { background: #FAFBFC; }
+.el-table .fut-head { color: #A6AFBE; }
+
+
+/* ============ Workweb 顶部导航适配 ============ */
+.att-content { padding: 4px 2px 30px; }
+/* 排班页整页锁定的高度: 顶栏改为 workweb 顶导航(约 58px) + 页边距，总偏移不变 */
+.att-content #app.fill-screen { height: calc(100vh - 130px); }

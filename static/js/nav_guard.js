@@ -1,6 +1,7 @@
-/* 导航角色守卫：非管理员访问「期末金属量 / 运行日志 / 接口文档 / 用户管理」时置灰菜单并弹窗提示，不跳转 */
+/* 导航角色守卫：非管理员访问「期末金属量 / 运行日志 / 接口文档 / 用户管理 /
+   考勤记录 / 排班与异动」时置灰菜单并弹窗提示，不跳转 */
 (function () {
-  var links = document.querySelectorAll('a[href="/inventory"], a[href="/logs"], a[href="/docs"], a[href="/users"]');
+  var links = document.querySelectorAll('a[href="/inventory"], a[href="/logs"], a[href="/docs"], a[href="/users"], a[href="/att/attendance"], a[href="/att/schedule"]');
   if (!links.length) return;
 
   request.get('/api/me')

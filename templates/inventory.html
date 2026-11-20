@@ -6,7 +6,7 @@
   <title>锂盐车间共享平台 - 期末金属量</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/element-plus.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/inventory.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}?v=20261119 }}">
   <style>
     /* 与其它页面一致的全局风格 */
     body {
@@ -65,7 +65,6 @@
       <div class="nav-dropdown-menu">
         <a href="/hazard">30吨蒸发问题汇总</a>
         <a href="/saferisks">安全隐患整改</a>
-        <a href="#" onclick="alert('未开发')">车间生产计划</a>
       </div>
     </div>
     <div class="nav-tab nav-dropdown active">
@@ -76,7 +75,14 @@
         <a href="/unitcost">辅料包材</a>
       </div>
     </div>
-    <a href="/staff" class="nav-tab">人员概况</a>
+    <div class="nav-tab nav-dropdown">
+            人员管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/att/attendance">考勤记录</a>
+                <a href="/att/schedule">排班与异动</a>
+                <a href="/att/staff">人员信息</a>
+            </div>
+        </div>
     <a href="/download" class="nav-tab">下载专区</a>
 
         <div class="nav-tab nav-dropdown">
@@ -101,9 +107,8 @@
       <el-button size="small" @click="showNewPeriod = true" v-if="unlocked">＋ 新增月</el-button>
       <el-button size="small" @click="triggerImport" v-if="unlocked">导入盘点表</el-button>
       <el-button size="small" type="primary" plain @click="addRow" v-if="unlocked">+ 增加行</el-button>
-      <el-button size="small" :type="unlocked ? 'danger' : 'success'" plain @click="toggleLock">
-        {{ unlocked ? '🔒 锁定' : '🔓 解锁编辑' }}
-      </el-button>
+      <el-button v-if="!unlocked" type="primary" size="small" @click="toggleLock">🔓 解锁编辑</el-button>
+      <el-button v-else type="danger" size="small" plain @click="toggleLock">🔒 锁定</el-button>
       <input type="file" ref="fileInput" accept=".xlsx,.xls" style="display:none" @change="onImport">
     </div>
   </div>

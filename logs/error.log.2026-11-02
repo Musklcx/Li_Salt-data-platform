@@ -1,0 +1,105 @@
+17:01:24 GET /api/state 异常: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 268, in api_state
+    bal = aggregate_balance(db, month)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 182, in aggregate_balance
+    w_vol = float(row['投入气浮量白'] or 0)
+                  ~~~^^^^^^^^^^^^^^^^^^
+IndexError: No item with that key
+17:01:29 GET /api/state 异常: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 268, in api_state
+    bal = aggregate_balance(db, month)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 182, in aggregate_balance
+    w_vol = float(row['投入气浮量白'] or 0)
+                  ~~~^^^^^^^^^^^^^^^^^^
+IndexError: No item with that key
+17:01:34 GET /api/state 异常: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 268, in api_state
+    bal = aggregate_balance(db, month)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 182, in aggregate_balance
+    w_vol = float(row['投入气浮量白'] or 0)
+                  ~~~^^^^^^^^^^^^^^^^^^
+IndexError: No item with that key
+17:01:47 GET /api/state 异常: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 268, in api_state
+    bal = aggregate_balance(db, month)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 182, in aggregate_balance
+    w_vol = float(row['投入气浮量白'] or 0)
+                  ~~~^^^^^^^^^^^^^^^^^^
+IndexError: No item with that key
+17:13:56 GET /api/state 异常: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 268, in api_state
+    bal = aggregate_balance(db, month)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MyWork\Flask\Workweb\workweb\inventory_bp.py", line 182, in aggregate_balance
+    w_vol = float(row['投入气浮量白'] or 0)
+                  ~~~^^^^^^^^^^^^^^^^^^
+IndexError: No item with that key

@@ -5,7 +5,7 @@
     <title>锂盐车间共享平台 - 运行日志</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- 已去除 Bootstrap 3 CDN 外链：页面全部使用下方自定义样式，无 bootstrap 类依赖（内网零外链） -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-unify.css') }}?v=20261119 }}">
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; }
@@ -92,7 +92,14 @@
                 <a href="/unitcost">辅料包材</a>
             </div>
         </div>
-        <a href="/staff" class="nav-tab">人员概况</a>
+        <div class="nav-tab nav-dropdown">
+            人员管理 <span style="font-size:12px;">▼</span>
+            <div class="nav-dropdown-menu">
+                <a href="/att/attendance">考勤记录</a>
+                <a href="/att/schedule">排班与异动</a>
+                <a href="/att/staff">人员信息</a>
+            </div>
+        </div>
         <a href="/download" class="nav-tab">下载专区</a>
 
         <div class="nav-tab nav-dropdown">
